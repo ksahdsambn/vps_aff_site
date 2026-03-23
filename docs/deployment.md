@@ -1,355 +1,596 @@
 # VPS AFF 网站部署文档
 
-## 1. 适用方案
+适用场景：`Debian 12 + 1Panel + Docker Compose + OpenResty + HTTPS`
 
-本文档适用于以下部署方式：
+本文档按“从 GitHub 拉取源码，在 1Panel 中创建编排，用 1Panel 网站功能做反向代理，用 1Panel 计划任务从 GitHub 自动更新并直接应用到容器”的方式编写。
 
-- 服务器系统：Debian 12
-- 面板：1Panel
-- 部署思路：用 1Panel 管理项目文件、容器编排、反向代理和 HTTPS
+## 1. 部署目标
 
-这份文档刻意采用“面板优先”的方式编写，尽量减少命令行操作。除了首次安装 1Panel 可能需要执行官方安装脚本以外，后续部署、绑定域名、启用 HTTPS、查看日志、重启服务，都建议在 1Panel 浏览器界面中完成。
+部署完成后，整体结构如下：
 
-## 2. 部署前准备
+1. 1Panel 负责管理服务器、OpenResty、网站反向代理、HTTPS 证书、计划任务。
+2. 项目代码通过 GitHub 克隆到服务器。
+3. Docker Compose 负责启动 `db`、`backend`、`frontend` 三个服务。
+4. 1Panel 网站把域名流量反向代理到宿主机 `127.0.0.1:8080`。
+5. `frontend` 容器内部再把 `/api/` 请求转发到 `backend:3000`。
+6. 后续更新不再手工上传压缩包，而是由 1Panel 计划任务执行脚本，从 GitHub 同步最新代码并重建容器。
 
-开始之前，请先确认以下条件：
+## 2. 前置条件
 
-- 已准备一台 Debian 12 服务器
-- 服务器建议至少 2 核 CPU、2GB 内存、20GB 可用磁盘
-- 域名已经购买完成，并且可以修改解析记录
-- 服务器安全组或防火墙已经放行 80 端口和 443 端口
-- 如果还没有安装 1Panel，请先完成 1Panel 官方在线安装
+开始前请确认：
 
-如果服务器已经装好 1Panel，可以直接从下一节继续。
+- 服务器系统为 Debian 12。
+- 1Panel 已安装并可正常登录。
+- 服务器至少有 2 核 CPU、4 GB 内存、20 GB 可用磁盘。
+- 域名已解析到当前服务器公网 IP。
+- 安全组或防火墙已放行 `80` 和 `443` 端口。
+- 服务器可访问 GitHub。
 
-## 3. 安装并登录 1Panel
+如果服务器尚未安装 `git`，先执行：
 
-### 3.1 安装 1Panel
+```bash
+apt update
+apt install -y git
+```
 
-在 Debian 12 服务器上，按照 1Panel 官方文档完成在线安装即可。安装完成后，终端会输出面板访问地址、端口和安全入口。
+如果 1Panel 尚未安装，请先按 1Panel 官方文档完成安装与首次初始化。
 
-### 3.2 首次登录
+## 3. 推荐的目录规划
 
-1. 在浏览器中打开安装完成后显示的 1Panel 地址。
-2. 按照面板提示完成管理员账号初始化。
-3. 登录成功后，先不要急着部署项目，建议先完成面板基础检查。
+推荐把项目放在 1Panel 网站目录下，便于统一管理。以下示例使用域名 `example.com`：
 
-### 3.3 基础检查
+```bash
+mkdir -p /opt/1panel/www/sites/example.com/index
+cd /opt/1panel/www/sites/example.com/index
+git clone https://github.com/ksahdsambn/vps_aff_site.git
+cd vps_aff_site
+git checkout master
+```
 
-进入 1Panel 后，优先确认以下内容：
+推荐最终路径：
 
-- 面板运行正常
-- Docker 服务已经由 1Panel 正常接管
-- 系统磁盘空间充足
-- 时间与时区设置正确
+```text
+/opt/1panel/www/sites/example.com/index/vps_aff_site
+```
 
-如果你的服务器用于正式站点，建议此时顺手完成：
+建议不要把仓库直接克隆到 `index` 根目录，而是保留一个独立子目录 `vps_aff_site`，这样网站目录和项目目录更容易区分。
 
-- 修改面板默认端口为自定义端口
-- 修改面板安全入口
-- 开启基础防火墙策略
-
-## 4. 在 1Panel 中准备网站运行环境
-
-本项目最终需要一个标准的 Web 站点入口，因此推荐先在 1Panel 中准备 OpenResty。
-
-### 4.1 安装 OpenResty
-
-操作路径：
-
-- 进入“应用商店”
-- 搜索“OpenResty”
-- 点击安装
-
-安装时重点关注：
-
-- HTTP 端口使用 80
-- HTTPS 端口使用 443
-- 如果服务器已经有其他服务占用了 80 或 443，需要先处理端口冲突
-
-安装完成后，OpenResty 会成为后续“网站”功能的基础运行环境。
-
-### 4.2 为什么要先装 OpenResty
-
-因为本项目虽然自带前端容器，但在 1Panel 场景下，推荐由 1Panel 的网站功能统一接管：
-
-- 域名绑定
-- HTTPS 证书
-- 强制跳转 HTTPS
-- 后续网站级维护
-
-这样做的好处是：网站入口、证书和运维都统一留在面板里，后续管理比纯手工配置更直观。
-
-## 5. 上传项目文件到服务器
-
-### 5.1 建议的存放方式
-
-在 1Panel 左侧进入“文件”，选择一个固定目录存放项目，例如：
-
-- 一个专门的站点项目目录
-- 不要放在临时目录
-- 不要放在会被系统自动清理的路径下
-
-建议整个项目保持完整上传，至少应包含：
-
-- backend 目录
-- frontend 目录
-- docker 目录
-- docker-compose.yml
-- .env.example
-
-### 5.2 推荐的上传方式
-
-为了减少命令行操作，推荐使用以下任一方式：
-
-- 直接用 1Panel 文件管理器上传压缩包，再在面板中解压
-- 使用 SFTP 上传整个项目目录
-- 如果你已经有 Git 仓库，也可以先在服务器拉取，再回到 1Panel 继续后续步骤
-
-如果你的目标是尽量减少命令行，最省心的方式就是：在本地打包项目，通过 1Panel 文件页面上传，再在面板中解压。
-
-## 6. 在面板中调整项目配置
-
-这一步非常关键。因为当前项目原始的容器编排方式默认会把前端直接发布到服务器 80 端口，而 1Panel 的网站和 OpenResty 也需要使用 80 和 443 端口。若不先调整，会出现端口冲突，导致网站无法正常接管域名和证书。
-
-### 6.1 先复制环境变量文件
-
-在项目根目录中，将 .env.example 复制为 .env，然后直接在 1Panel 在线编辑器中修改内容。
-
-要求如下：
-
-- .env 必须和 docker-compose.yml 放在同一目录
-- 修改完成后保存，不要另存到其他位置
-
-### 6.2 环境变量应如何填写
-
-| 变量名 | 如何填写 | 说明 |
-|---|---|---|
-| MYSQL_ROOT_PASSWORD | 填写高强度密码 | 仅数据库容器内部管理使用 |
-| MYSQL_DATABASE | 建议保持 vps_aff_db | 数据库名称 |
-| MYSQL_USER | 建议保持 vps_app | 应用连接数据库的账号 |
-| MYSQL_PASSWORD | 填写高强度密码 | 应用连接数据库的密码 |
-| JWT_SECRET | 填写长随机字符串 | 后台登录签名密钥 |
-| CORS_ORIGIN | 填写最终正式域名，建议直接写 HTTPS 地址 | 例如正式站点域名；如果同时使用主域名和 www，可写成逗号分隔的两个地址 |
-| DATABASE_URL | 保持指向当前编排内的数据库服务 | 数据库主机名仍然使用 db，不要改成 localhost |
-| PORT | 保持 3000 | 后端容器内部监听端口 |
-
-填写时需要特别注意：
-
-- CORS_ORIGIN 不能继续保留为本地开发地址
-- 如果你的正式访问地址是 https 开头，这里也必须填写 https 开头
-- DATABASE_URL 中的数据库名、用户名、密码必须与上方 MySQL 变量一致
-
-### 6.3 调整前端端口映射
-
-当前项目默认让前端容器直接占用服务器 80 端口。在 1Panel 场景下，这种写法要先改掉。
-
-请在 1Panel 在线编辑器中打开 docker-compose.yml，找到前端服务对应的端口发布设置，并做以下调整：
-
-- 不要再让前端容器直接对外占用 80 端口
-- 改成只绑定一个内部访问端口，例如服务器本机的 8080 端口
-- 这个端口后面将作为 1Panel 网站反向代理的目标地址
-
-推荐思路如下：
-
-- OpenResty 负责对外提供 80 和 443
-- 前端容器只在服务器内部提供一个中转端口
-- 1Panel 网站把域名流量转发到这个中转端口
-
-如果 8080 已经被占用，可以改成其他未被占用的端口，但后面的反向代理地址也要同步修改。
-
-### 6.4 不要改动的部分
-
-以下配置通常不需要改：
-
-- 数据库服务名称 db
-- 后端服务名称 backend
-- 前端服务内部监听端口 80
-- 后端服务内部监听端口 3000
-
-原因是当前项目的前后端代理关系和数据库连接关系，都是围绕这组内部服务名配置好的。
-
-## 7. 用 1Panel 创建容器编排并启动项目
-
-### 7.1 创建编排
+## 4. 先在 1Panel 安装 OpenResty
 
 操作路径：
 
-- 进入“容器”
-- 进入“编排”
-- 点击“创建编排”
+1. 进入 `应用商店`。
+2. 搜索 `OpenResty`。
+3. 点击安装。
 
-创建方式建议选择“路径选择”，因为当前项目已经自带完整的 docker-compose.yml。
+安装时确认：
 
-### 7.2 选择项目文件
+- HTTP 端口：`80`
+- HTTPS 端口：`443`
 
-在“路径选择”方式中：
+如果 `80` 或 `443` 已被其他程序占用，先解决端口冲突，再继续下面步骤。
 
-1. 选择你刚刚上传好的项目目录
-2. 选择该目录中的 docker-compose.yml
-3. 为编排填写一个容易识别的名称，例如项目名称
-4. 确认保存
+## 5. 从 GitHub 获取项目代码
 
-如果 .env 与 docker-compose.yml 在同一目录，1Panel 会按这套文件启动当前项目。
+强烈建议从第一天就使用 GitHub 克隆方式部署，不要用“上传压缩包再解压”的方式上线这个项目。原因很直接：
 
-### 7.3 启动并等待完成
+1. 你后面要使用 1Panel 计划任务从 GitHub 更新。
+2. 自动更新脚本依赖仓库中的 `.git` 目录。
+3. 如果你一开始是上传压缩包，后续还要额外把目录改造成 Git 仓库，反而更麻烦。
 
-编排创建完成后，直接在编排详情页启动项目。
+标准操作如下：
 
-首次启动时会发生以下动作：
+```bash
+cd /opt/1panel/www/sites/example.com/index
+git clone https://github.com/ksahdsambn/vps_aff_site.git
+cd vps_aff_site
+git checkout master
+```
 
-- 拉取或构建镜像
-- 启动 MySQL 容器
-- 等待数据库健康检查通过
-- 启动后端容器
-- 执行数据库迁移
-- 执行运行时种子
-- 启动前端容器
+克隆完成后，确认下面这些文件都在项目根目录：
 
-第一次启动通常比后续重启更慢，属于正常现象。
+```text
+backend/
+frontend/
+docker/
+docs/
+markdown/
+scripts/
+.env.example
+docker-compose.yml
+README.md
+```
 
-### 7.4 启动完成后的检查点
+## 6. 准备 `.env`
 
-在编排详情页中，确认以下结果：
+在项目根目录执行：
 
-- db 服务为运行中
-- backend 服务为运行中
-- frontend 服务为运行中
+```bash
+cd /opt/1panel/www/sites/example.com/index/vps_aff_site
+cp .env.example .env
+```
 
-如果某个服务没有正常启动，先不要继续绑定域名，应先查看该服务日志。
+然后在 1Panel 文件管理器里打开 `.env`，按实际环境修改。下面给出一份可直接参考的生产示例：
 
-## 8. 用 1Panel 网站功能绑定域名
+```env
+MYSQL_ROOT_PASSWORD=replace_with_strong_root_password
+MYSQL_DATABASE=vps_aff_db
+MYSQL_USER=vps_app
+MYSQL_PASSWORD=replace_with_strong_app_password
+JWT_SECRET=replace_with_long_random_secret
+CORS_ORIGIN=https://example.com,https://www.example.com
+DATABASE_URL=mysql://vps_app:replace_with_strong_app_password@db:3306/vps_aff_db
+PORT=3000
+```
 
-容器编排启动成功后，再进入网站配置。
+请特别注意以下规则：
 
-### 8.1 创建网站
+1. `MYSQL_PASSWORD` 和 `DATABASE_URL` 中的密码必须一致。
+2. `MYSQL_DATABASE` 和 `DATABASE_URL` 中的数据库名必须一致。
+3. `CORS_ORIGIN` 必须写正式访问地址，不要继续保留 `http://localhost`。
+4. 如果你只使用一个域名，例如只用 `https://example.com`，那就只写一个地址。
+5. `DATABASE_URL` 中数据库主机必须保持 `db`，不要改成 `localhost`。
+
+## 7. 修改 `docker-compose.yml` 以适配 1Panel
+
+当前项目默认把前端容器直接发布到宿主机 `80` 端口。这个写法在 1Panel 场景下不合适，因为：
+
+1. `80` 和 `443` 端口应该由 OpenResty 和 1Panel 网站统一接管。
+2. 如果前端容器继续直接占用 `80`，1Panel 网站功能和 HTTPS 证书会冲突。
+
+### 7.1 需要修改的地方
+
+把 `frontend` 服务中的端口映射：
+
+```yaml
+ports:
+  - "80:80"
+```
+
+改成：
+
+```yaml
+ports:
+  - "127.0.0.1:8080:80"
+```
+
+也就是说，最终 `docker-compose.yml` 中 `frontend` 段应类似这样：
+
+```yaml
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend/Dockerfile
+    depends_on:
+      - backend
+    ports:
+      - "127.0.0.1:8080:80"
+    networks:
+      - app_network
+```
+
+### 7.2 为什么要绑定到 `127.0.0.1`
+
+推荐写成：
+
+```yaml
+- "127.0.0.1:8080:80"
+```
+
+而不是：
+
+```yaml
+- "8080:80"
+```
+
+原因是：
+
+1. `127.0.0.1:8080` 只允许本机访问，更安全。
+2. 1Panel 网站反向代理与 OpenResty 都在同一台服务器上，可以正常转发到这个地址。
+3. 这样不会把前端容器的 8080 端口直接暴露给公网。
+
+如果 `8080` 已被占用，可以改成别的端口，比如：
+
+```yaml
+- "127.0.0.1:18080:80"
+```
+
+但后面的 1Panel 网站代理地址也必须同步改成 `http://127.0.0.1:18080`。
+
+### 7.3 不要改动的地方
+
+以下配置保持现状即可：
+
+- `db` 服务名
+- `backend` 服务名
+- `frontend` 容器内部端口 `80`
+- `backend` 容器内部端口 `3000`
+- 数据库主机名 `db`
+
+这些名字已经和项目内部代理关系对齐，不建议再改。
+
+## 8. 在 1Panel 中创建容器编排
 
 操作路径：
 
-- 进入“网站”
-- 点击“创建网站”
-- 选择“反向代理”类型
+1. 进入 `容器`。
+2. 进入 `编排`。
+3. 点击 `创建编排`。
+4. 选择 `路径选择`。
 
-### 8.2 填写网站信息
+推荐填写方式：
 
-重点填写以下内容：
+- 编排名称：`vps-aff-site`
+- Compose 文件路径：`/opt/1panel/www/sites/example.com/index/vps_aff_site/docker-compose.yml`
 
-- 主域名：填写你的正式域名
-- 代理地址：填写前面为前端容器预留的内部地址
+如果 1Panel 页面支持设置工作目录，请使用：
 
-如果你前面把前端改成仅绑定到本机 8080 端口，这里的代理地址就应该填写服务器本机地址加该端口。
+```text
+/opt/1panel/www/sites/example.com/index/vps_aff_site
+```
 
-### 8.3 为什么反向代理到前端容器即可
+如果页面支持设置环境文件，请选择：
 
-因为当前项目的前端容器内部已经处理好了两件事：
+```text
+/opt/1panel/www/sites/example.com/index/vps_aff_site/.env
+```
 
-- 前端页面静态资源访问
-- 将所有 /api 请求继续转发给 backend 服务
+保存后启动编排。
 
-也就是说，在 1Panel 层面只需要把域名转发到前端容器，不需要再单独为后端创建第二条网站规则。
+### 8.1 首次启动时会发生什么
 
-## 9. 在 1Panel 里申请并启用 HTTPS
+首次启动通常会自动完成：
+
+1. 启动 MySQL 容器。
+2. 等待数据库健康检查通过。
+3. 构建并启动后端容器。
+4. 执行 Prisma migration。
+5. 执行运行时 seed。
+6. 构建并启动前端容器。
+
+### 8.2 启动后应看到的服务
+
+在 1Panel 编排详情中，正常情况下你会看到 3 个服务都处于运行状态：
+
+- `db`
+- `backend`
+- `frontend`
+
+如果你在终端检查，也可以执行：
+
+```bash
+cd /opt/1panel/www/sites/example.com/index/vps_aff_site
+docker compose ps
+```
+
+### 8.3 首次启动后的本机验证
+
+在绑定域名之前，先验证宿主机本地访问是否正常：
+
+```bash
+curl -I http://127.0.0.1:8080
+curl http://127.0.0.1:8080/api/config
+curl http://127.0.0.1:8080/api/products?page=1&pageSize=3
+```
+
+如果后端启动异常，可以进一步看日志：
+
+```bash
+cd /opt/1panel/www/sites/example.com/index/vps_aff_site
+docker compose logs backend --tail=100
+docker compose logs frontend --tail=100
+docker compose logs db --tail=100
+```
+
+### 8.4 在 1Panel 中创建网站并绑定域名
+
+编排启动成功后，再配置网站。
+
+#### 8.4.1 创建网站
+
+操作路径：
+
+1. 进入 `网站`。
+2. 点击 `创建网站`。
+3. 选择 `反向代理` 类型。
+
+#### 8.4.2 推荐填写方式
+
+假设正式域名为 `example.com`，则推荐：
+
+- 主域名：`example.com`
+- 代理地址：`http://127.0.0.1:8080`
+
+如果你还要支持 `www.example.com`，有两种做法：
+
+1. 在同一个网站里追加域名别名。
+2. 再建一个网站，把 `www.example.com` 反代到同一个地址。
+
+#### 8.4.3 为什么只代理到前端容器
+
+因为当前项目的前端容器已经内置 Nginx，并且已经处理了：
+
+1. 前端静态页面访问。
+2. `/api/` 请求代理到 `backend:3000`。
+
+所以在 1Panel 网站层面，你只需要把域名代理到前端容器暴露出来的本机端口即可，不需要再额外给后端单独配一条网站规则。
+
+## 9. 在 1Panel 中申请并启用 HTTPS
 
 ### 9.1 申请证书
 
 操作路径：
 
-- 进入“证书”
-- 选择“申请证书”
+1. 进入 `证书`。
+2. 点击 `申请证书`。
 
-常见选择建议：
+常见建议：
 
-- 如果域名已经正确解析到当前服务器，并且 80 端口可访问，优先使用 HTTP 验证
-- 如果你接入了 CDN，或者 80 端口不能直接用于验证，可改用 DNS 验证
+- 域名已正确解析且 80 端口可用：优先用 HTTP 验证。
+- 使用 CDN 或 80 端口不能直接验证：使用 DNS 验证。
 
-### 9.2 绑定证书到网站
+### 9.2 启用 HTTPS
 
-证书申请成功后，回到“网站”，进入刚才创建的网站设置：
+证书签发成功后，回到对应网站配置页，开启：
 
-- 启用 HTTPS
-- 选择刚申请好的证书
-- 开启自动跳转 HTTPS
+- HTTPS
+- 证书绑定
+- 自动跳转 HTTPS
 
-完成后，用户访问域名时就会直接进入 HTTPS 站点。
+### 9.3 HTTPS 启用后必须复核
 
-### 9.3 证书启用后的同步检查
+确认以下内容：
 
-证书启用后，请再次确认：
+1. 浏览器访问的是 `https://`。
+2. 首页能正常打开。
+3. 后台登录页 `/admin/login` 能正常打开。
+4. 浏览器控制台没有 CORS 报错。
 
-- 浏览器访问正式域名时为 HTTPS
-- 首页可以正常打开
-- 后台登录页可以正常打开
-- 页面没有出现跨域报错
+如果这里出现跨域问题，优先检查 `.env` 里的：
 
-如果你访问的是 https 域名，但 .env 中的 CORS_ORIGIN 仍然写成 http 地址，后台接口就可能报跨域错误。
+```env
+CORS_ORIGIN=https://example.com,https://www.example.com
+```
 
 ## 10. 首次验收
 
-完成上面的步骤后，建议按下面顺序逐项检查：
-
 ### 10.1 访问前台首页
 
-确认首页能正常打开，并且产品列表有内容。
+访问：
+
+```text
+https://example.com/
+```
+
+确认：
+
+- 页面能打开
+- 产品列表能加载
+- 切换中英文正常
 
 ### 10.2 访问后台登录页
 
-访问后台地址，确认登录页可以打开。
+访问：
+
+```text
+https://example.com/admin/login
+```
 
 ### 10.3 使用默认管理员登录
 
 首次部署成功后，系统会自动创建默认管理员：
 
-- 用户名：admin
-- 密码：admin123
+```text
+username: admin
+password: admin123
+```
 
-如果可以成功进入后台，说明数据库迁移、运行时种子、接口代理三部分都已经跑通。
+如果这里登录失败，优先检查后端日志：
 
-### 10.4 检查中英文和基础配置
+```bash
+cd /opt/1panel/www/sites/example.com/index/vps_aff_site
+docker compose logs backend --tail=100
+```
 
-建议登录后台后立即检查以下内容：
+### 10.4 校验基础配置功能
 
-- 首页中英文切换是否正常
-- 公告保存后前台是否能同步显示
-- 配置管理中的站点标题和社交链接是否能保存
+登录后台后建议至少测试：
+
+1. 公告保存后前台能显示。
+2. 站点标题和社交链接能保存。
+3. 商品新增、修改、删除正常。
 
 ## 11. 日常维护
 
 ### 11.1 查看运行状态
 
-日常维护优先使用 1Panel 面板中的以下入口：
+日常运维优先使用 1Panel：
 
-- 容器编排状态页
-- 单个容器日志页
-- 网站状态页
-- 证书状态页
+1. `容器 -> 编排 -> 当前项目`
+2. `网站 -> 当前站点`
+3. `证书 -> 当前证书`
+
+必要时也可以在终端执行：
+
+```bash
+cd /opt/1panel/www/sites/example.com/index/vps_aff_site
+docker compose ps
+docker compose logs backend --tail=100
+docker compose logs frontend --tail=100
+```
 
 ### 11.2 重启服务
 
-如果只是网站访问异常，但文件和配置没有改动，优先在 1Panel 中执行：
+如果只是访问异常，但没有改代码，可以先在 1Panel 中：
 
-- 重启当前项目编排
-- 或只重启 backend / frontend 单个服务
+1. 重启当前编排。
+2. 或只重启 `backend` / `frontend`。
 
-### 11.3 更新项目
+终端等价命令如下：
 
-后续更新版本时，建议顺序如下：
+```bash
+cd /opt/1panel/www/sites/example.com/index/vps_aff_site
+docker compose restart
+```
 
-1. 在 1Panel 文件管理中替换项目文件
-2. 如有需要，修改 .env
-3. 回到编排页面重建或重新启动项目
-4. 重新访问前台与后台进行验收
+### 11.3 更新项目：使用 1Panel 计划任务 + GitHub + 自动重建容器
+
+这一节是本文档的重点。后续更新不要再用“手工上传文件 + 手工点重建”的方式，而是改成：
+
+1. 本地把修改推送到 GitHub。
+2. 服务器上的 1Panel 计划任务定时执行更新脚本。
+3. 更新脚本拉取 GitHub 最新代码并执行 `docker compose up -d --build --remove-orphans`。
+
+#### 11.3.1 先确认服务器目录中存在更新脚本
+
+仓库已经包含更新脚本：
+
+```text
+scripts/update-from-github.sh
+```
+
+部署完成后的实际路径示例：
+
+```text
+/opt/1panel/www/sites/example.com/index/vps_aff_site/scripts/update-from-github.sh
+```
+
+你也可以手动看一下脚本内容：
+
+```bash
+cd /opt/1panel/www/sites/example.com/index/vps_aff_site
+cat scripts/update-from-github.sh
+```
+
+脚本核心逻辑如下：
+
+```bash
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+REMOTE="${REMOTE:-origin}"
+BRANCH="${BRANCH:-master}"
+ENV_FILE="${ENV_FILE:-.env}"
+
+cd "${PROJECT_DIR}"
+
+TMP_ENV="$(mktemp)"
+cp "${ENV_FILE}" "${TMP_ENV}"
+
+git fetch "${REMOTE}" "${BRANCH}"
+git reset --hard "${REMOTE}/${BRANCH}"
+cp "${TMP_ENV}" "${ENV_FILE}"
+
+docker compose up -d --build --remove-orphans
+docker compose ps
+```
+
+这段脚本做了 5 件事：
+
+1. 自动定位项目根目录，不需要手工改项目路径。
+2. 先备份服务器本地 `.env`。
+3. 从 GitHub 获取 `origin/master` 最新代码。
+4. 用远端分支覆盖所有受 Git 管理的文件。
+5. 恢复服务器本地 `.env`，然后重建并重启容器。
+
+这意味着：
+
+- GitHub 上的代码会覆盖服务器里所有受 Git 管理的文件。
+- 服务器本地 `.env` 会被保留。
+- 如果你曾经在服务器里手工改过受 Git 管理的文件，但没有提交到 GitHub，这些改动会被更新脚本覆盖。
+
+#### 11.3.2 在 1Panel 中创建计划任务
+
+操作路径：
+
+1. 进入 `计划任务`。
+2. 点击 `创建任务`。
+3. 任务类型选择 `Shell 脚本`。
+
+推荐填写如下：
+
+| 字段 | 推荐值 |
+|---|---|
+| 任务类型 | `Shell 脚本` |
+| 任务名称 | `vps-aff-site-sync` |
+| 分组 | `默认` |
+| 执行周期 | 例如每周一 `01:30` |
+| 在容器中执行 | 不勾选 |
+| 用户 | `root` |
+| 解释器 | 自定义 `/bin/bash` |
+
+脚本内容直接填写这一行：
+
+```bash
+/bin/bash /opt/1panel/www/sites/example.com/index/vps_aff_site/scripts/update-from-github.sh
+```
+
+如果你的项目目录不是本文示例路径，只需要把上面的绝对路径改成你的实际部署路径。
+
+#### 11.3.3 计划任务创建后先手工执行一次
+
+不要直接依赖定时执行，先在 1Panel 任务页手工执行一次，或者在终端执行：
+
+```bash
+/bin/bash /opt/1panel/www/sites/example.com/index/vps_aff_site/scripts/update-from-github.sh
+```
+
+手工执行成功后，再启用周期调度。
+
+#### 11.3.4 推荐的调度频率
+
+如果你不是高频发布，推荐下面两种：
+
+1. 每周一凌晨 `01:30`。
+2. 每天凌晨 `03:00`。
+
+不建议设置为过于频繁的分钟级任务，因为每次更新都可能触发镜像重建与容器重启。
+
+#### 11.3.5 更新前后的标准流程
+
+以后发版建议统一按这个顺序：
+
+1. 本地改代码。
+2. 本地测试通过。
+3. 推送到 GitHub。
+4. 等待 1Panel 计划任务执行，或在 1Panel 里手动执行一次任务。
+5. 在 1Panel 编排页确认容器状态。
+6. 打开前台和后台做一次快速验收。
+
+#### 11.3.6 如果仓库是私有仓库
+
+当前仓库如果改成私有仓库，计划任务更新之前还需要先解决服务器访问 GitHub 的认证问题。推荐做法：
+
+1. 给服务器配置 GitHub SSH Deploy Key。
+2. 把仓库远端改成 SSH 地址。
+
+例如：
+
+```bash
+cd /opt/1panel/www/sites/example.com/index/vps_aff_site
+git remote set-url origin git@github.com:ksahdsambn/vps_aff_site.git
+```
+
+如果你继续使用公开仓库，则不需要额外处理这一段。
 
 ### 11.4 数据备份建议
 
-当前项目数据库运行在项目编排内部，因此备份建议分成三类：
+建议至少备份以下三类内容：
 
-- 项目文件备份：备份项目目录，至少保留 docker-compose.yml、.env 和文档
-- 网站配置备份：在 1Panel 网站中备份域名、反向代理和证书关联配置
-- 服务器级备份：建议定期做云盘快照或整机快照
+1. 项目目录备份。
+2. 1Panel 网站与证书配置备份。
+3. 整机快照或云盘快照。
 
-如果你希望数据库也做到完全可视化的单独备份，后续可以把数据库从当前编排中拆分出来，改为使用 1Panel 应用商店安装的 MySQL，再让后端连接独立数据库。
+如果只做最小可行备份，至少要保留：
 
-在保持当前一体化编排不变的前提下，最稳妥的方式是：结合服务器快照与项目目录备份一起使用。
+```text
+docker-compose.yml
+.env
+项目 Git 仓库
+服务器快照
+```
 
 ## 12. 常见问题排查
 
@@ -357,52 +598,93 @@
 
 优先检查：
 
-- 域名是否已经解析到当前服务器
-- 80 和 443 端口是否已放行
-- OpenResty 是否正常运行
-- 网站代理地址是否填写成了前端容器的内部访问地址
+1. 域名是否解析到当前服务器。
+2. `80` 和 `443` 是否已放行。
+3. OpenResty 是否正常运行。
+4. 网站代理地址是否写成了：
 
-### 12.2 容器编排启动失败
+```text
+http://127.0.0.1:8080
+```
+
+### 12.2 编排启动失败
 
 优先检查：
 
-- .env 是否与 docker-compose.yml 位于同一目录
-- .env 中数据库密码和连接串是否一致
-- 前端端口是否仍然占用了服务器 80 端口，导致与 OpenResty 冲突
+1. `.env` 是否存在于项目根目录。
+2. `.env` 中数据库密码与 `DATABASE_URL` 是否一致。
+3. `docker-compose.yml` 是否已经把前端端口改成：
+
+```yaml
+- "127.0.0.1:8080:80"
+```
 
 ### 12.3 首页能打开，但后台登录失败
 
 优先检查：
 
-- backend 容器日志中是否显示迁移成功
-- backend 容器日志中是否显示运行时种子执行成功
-- 默认管理员是否已成功创建
+```bash
+cd /opt/1panel/www/sites/example.com/index/vps_aff_site
+docker compose logs backend --tail=100
+```
 
-如果启动刚完成就马上登录，可能是种子脚本还未执行完，稍等片刻再试一次。
+重点看是否出现：
 
-### 12.4 浏览器提示跨域错误
+- migration 执行失败
+- seed 执行失败
+- 数据库连接失败
+
+### 12.4 启用 HTTPS 后出现跨域错误
+
+优先检查 `.env`：
+
+```env
+CORS_ORIGIN=https://example.com,https://www.example.com
+```
+
+最常见错误是：
+
+1. 页面已经走 `https://`，但 `CORS_ORIGIN` 还是 `http://`。
+2. 实际用了 `www`，但 `.env` 里只写了裸域名。
+
+### 12.5 修改了 GitHub 代码，但服务器页面没有变化
 
 优先检查：
 
-- .env 中的 CORS_ORIGIN 是否写成了正式访问域名
-- 如果同时使用主域名和 www，是否两个地址都已加入
-- 启用 HTTPS 后，CORS_ORIGIN 是否仍保留旧的 http 地址
+1. GitHub 是否真的收到了最新提交。
+2. 1Panel 计划任务是否执行成功。
+3. 任务输出里是否报 `git fetch` 或 `docker compose up` 错误。
+4. 编排是否已经重新构建。
 
-### 12.5 HTTPS 证书申请失败
+可手工验证：
 
-优先检查：
+```bash
+cd /opt/1panel/www/sites/example.com/index/vps_aff_site
+git log --oneline -n 3
+docker compose ps
+docker compose logs frontend --tail=50
+```
 
-- 域名解析是否已经生效
-- 80 端口是否可用于验证
-- 是否存在 CDN 代理影响验证
-- 申请方式是否选错，应根据实际情况选择 HTTP 验证或 DNS 验证
+### 12.6 计划任务执行后 `.env` 被覆盖了怎么办
 
-### 12.6 修改了项目文件，但页面没有变化
+按本文提供的脚本，`.env` 会先备份再恢复，正常不会被覆盖。
 
-通常是以下原因：
+如果你自己改过脚本，请重新确认至少包含这两步：
 
-- 只上传了文件，但没有在编排页面执行重建或重启
-- 浏览器缓存仍在使用旧资源
-- 修改的是错误的项目目录
+```bash
+cp .env "${TMP_ENV}"
+cp "${TMP_ENV}" .env
+```
 
-遇到这种情况时，先在 1Panel 确认项目目录、编排来源和容器重建状态，再刷新浏览器验证。
+### 12.7 服务器上手工改过代码，计划任务一跑就没了
+
+这是预期行为。因为更新脚本会执行：
+
+```bash
+git reset --hard origin/master
+```
+
+所以：
+
+1. 服务器上的受 Git 管理文件，应当只作为发布产物，不要直接手工改。
+2. 所有正式改动都应先在本地完成，再推送到 GitHub。
