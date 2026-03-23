@@ -53,3 +53,16 @@
 - Verified authenticated `GET http://localhost/api/admin/products?keyword=%20Provider%2048%20&page=1&pageSize=5` trims the keyword and returns the expected record.
 - Verified authenticated invalid create payload on `POST http://localhost/api/admin/products` returns `400` with a validation error instead of a server error.
 - Smoke tested authenticated create, update, and delete on `POST/PUT/DELETE http://localhost/api/admin/products` after the validation changes.
+
+## 2026-03-24 (Docs)
+
+- Rewrote `docs/deployment.md` into a more precise 1Panel deployment guide with concrete commands, exact path examples, explicit `.env` content, and exact `docker-compose.yml` port mapping changes for 1Panel reverse proxy deployment.
+- Reworked deployment maintenance section `11.3` to use the 1Panel scheduled task model instead of manual file replacement, including a GitHub-driven update workflow that rebuilds and reapplies containers.
+- Added a reusable deployment helper script at `scripts/update-from-github.sh` so 1Panel tasks can call a stable script path instead of pasting a long inline shell body each time.
+- Documented the exact 1Panel scheduled task fields: task type, task name, schedule, interpreter, user, and script content.
+- Added operational notes about preserving server-side `.env`, the effect of `git reset --hard`, and using SSH remotes if the GitHub repository becomes private.
+
+## Validation (2026-03-24 Docs)
+
+- Reviewed `docs/deployment.md` and confirmed the maintenance update section is now `11.3`.
+- Reviewed `scripts/update-from-github.sh` to confirm it preserves `.env`, fetches `origin/master`, and runs `docker compose up -d --build --remove-orphans`.
