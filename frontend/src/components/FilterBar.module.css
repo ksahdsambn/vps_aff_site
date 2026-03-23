@@ -1,0 +1,47 @@
+.container {
+  margin: 16px 24px;
+}
+
+.desktopContent {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: flex-end;
+  background-color: #fff;
+  padding: 16px;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+}
+
+.mobileContent {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.filterItem {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.label {
+  font-size: 14px;
+  color: #595959;
+  font-weight: 500;
+}
+
+.actionItem {
+  margin-bottom: 0;
+}
+
+.fullWidthBtn {
+  width: 100%;
+}
+
+@media (max-width: 768px) {
+  .container {
+    margin: 12px;
+  }
+}

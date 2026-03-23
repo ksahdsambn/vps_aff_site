@@ -1,0 +1,53 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model Product {
+  id             Int      @id @default(autoincrement())
+  provider       String   @db.VarChar(100)
+  name           String   @db.VarChar(200)
+  cpu            Int
+  memory         Float
+  disk           Float
+  monthlyTraffic Float
+  bandwidth      Float
+  location       String   @db.VarChar(100)
+  price          Float
+  currency       String   @db.Char(3)
+  reviewUrl      String?  @db.VarChar(500)
+  remark         String?  @db.VarChar(500)
+  affiliateUrl   String   @db.VarChar(500)
+  isDeleted      Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([provider])
+  @@index([price])
+  @@index([createdAt])
+}
+
+model SystemConfig {
+  id          Int      @id @default(autoincrement())
+  configKey   String   @unique @db.VarChar(100)
+  configValue String?  @db.Text
+  description String?  @db.VarChar(200)
+  updatedAt   DateTime @updatedAt
+}
+
+model Admin {
+  id           Int       @id @default(autoincrement())
+  username     String    @unique @db.VarChar(50)
+  passwordHash String
+  createdAt    DateTime  @default(now())
+  lastLoginAt  DateTime?
+}
