@@ -1,0 +1,103 @@
+.container {
+  padding: 0 12px 24px;
+}
+
+.sortHeader {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin-bottom: 16px;
+  gap: 8px;
+}
+
+.sortLabel {
+  font-size: 14px;
+  color: #595959;
+}
+
+.cardList {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.card {
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  border: 1px solid #f0f0f0;
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.provider {
+  font-size: 16px;
+  color: #1677ff;
+}
+
+.price {
+  font-size: 16px;
+  font-weight: 600;
+  color: #cf1322;
+}
+
+.name {
+  font-size: 14px;
+  color: #262626;
+  font-weight: 500;
+}
+
+.details {
+  font-size: 13px;
+}
+
+.remark {
+  font-size: 13px;
+  margin-bottom: 12px;
+  background-color: #fafafa;
+  padding: 8px;
+  border-radius: 4px;
+}
+
+.actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.actionBtn {
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 10px; 
+  min-width: 44px;
+  min-height: 44px;
+  justify-content: center;
+}
+
+.orderBtn {
+  flex: 1;
+  font-weight: 600;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pagination {
+  margin-top: 24px;
+  display: flex;
+  justify-content: center;
+}
+
+.empty {
+  text-align: center;
+  padding: 40px 0;
+  color: #bfbfbf;
+}

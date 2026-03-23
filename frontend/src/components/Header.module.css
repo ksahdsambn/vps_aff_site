@@ -1,0 +1,74 @@
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  height: 64px;
+  background-color: #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+.logoContainer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo {
+  height: 32px;
+  object-fit: contain;
+}
+
+.title {
+  margin-bottom: 0 !important;
+  font-weight: 600;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.socialIcons {
+  gap: 16px !important;
+}
+
+.icon {
+  font-size: 22px;
+  color: #595959;
+  transition: color 0.3s;
+}
+
+.icon:hover {
+  color: #1677ff;
+}
+
+@media (max-width: 768px) {
+  .header {
+    padding: 0 12px;
+  }
+  
+  .title {
+    font-size: 18px !important;
+  }
+  
+  .icon {
+    font-size: 18px;
+  }
+  
+  .actions {
+    gap: 12px;
+  }
+  
+  .socialIcons {
+    gap: 8px !important;
+  }
+  
+  .langBtn {
+    padding: 4px 8px;
+  }
+}
