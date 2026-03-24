@@ -34,7 +34,7 @@
     "order": "Order",
     "priceSortTip": "Sorted by value only, for reference",
     "reviewLink": "View Review",
-    "orderButton": "Order Now",
+    "orderButton": "order",
     "noData": "No data available",
     "noReview": "-",
     "noRemark": "-",
