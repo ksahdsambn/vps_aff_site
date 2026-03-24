@@ -104,3 +104,17 @@
 - Validated the 2nd/3rd column grid layout on medium-sized screen simulations.
 - Checked progress bars correctly calculate percentages for hardware specs.
 - Confirmed glassmorphism effect is consistent across components.
+
+## 2026-03-25 (UI Simplification)
+
+- Simplified the product display by removing visual clutter:
+  - **Removed Icons**: Deleted column/section icons for CPU, Memory, and Disk in both the Product Table and Product Cards.
+  - **Removed Progress Bars**: Disabled the `VpsProgress` hardware gauges for CPU, RAM, and Disk to achieve a cleaner, text-focused aesthetic.
+  - **Cleaned Codebase**: Removed unused icon imports and the `VpsProgress` component import from `ProductTable.tsx` and `ProductCard.tsx`.
+- Rebuilt Docker containers and pushed changes to GitHub.
+
+## Validation (2026-03-25 UI Simplification)
+
+- Verified that CPU, Memory, and Disk columns now only show text labels without icons.
+- Confirmed that the hardware specification sections in cards no longer show progress bars.
+- Verified `npm run build` and `npm run lint` pass in the frontend.
