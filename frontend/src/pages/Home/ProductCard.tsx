@@ -1,7 +1,7 @@
 import React from 'react';
-import { Card, Button, Typography, Pagination, Select, Spin, Row, Col, Divider, Tooltip } from 'antd';
+import { Card, Button, Typography, Pagination, Select, Spin, Row, Col, Divider, Tooltip, Empty } from 'antd';
 import { useTranslation } from 'react-i18next';
-import { ShoppingCartOutlined, ExportOutlined, QuestionCircleOutlined } from '@ant-design/icons';
+import { ShoppingCartOutlined, ExportOutlined, QuestionCircleOutlined, LoadingOutlined } from '@ant-design/icons';
 import type { Product } from '../../api';
 import styles from './ProductCard.module.css';
 
@@ -21,6 +21,7 @@ interface ProductCardProps {
 
 const ProductCardList: React.FC<ProductCardProps> = ({ data, loading, pagination, onSortChange, onPageChange }) => {
   const { t } = useTranslation();
+  const antIcon = <LoadingOutlined style={{ fontSize: 48, color: '#6366f1' }} spin />;
   
   const handleSortChange = (value: string) => {
     if (!value) {
@@ -58,45 +59,49 @@ const ProductCardList: React.FC<ProductCardProps> = ({ data, loading, pagination
           onChange={handleSortChange}
           allowClear
           size="large"
+          className="glass-selector"
         />
       </div>
 
-      <Spin spinning={loading}>
+      <Spin spinning={loading} indicator={antIcon}>
         {data.length === 0 && !loading ? (
-          <div className={styles.empty}>{t('table.noData')}</div>
+          <div style={{ padding: '60px 0', background: 'rgba(255,255,255,0.4)', borderRadius: 20, backdropFilter: 'blur(10px)' }}>
+            <Empty description={t('table.noData')} />
+          </div>
         ) : (
           <div className={styles.cardList}>
             {data.map((item) => (
-              <Card key={item.id} className={styles.card} styles={{ body: { padding: 16 } }}>
+              <Card key={item.id} className={styles.card} styles={{ body: { padding: 20 } }}>
                 <div className={styles.cardHeader}>
                   <Text strong className={styles.provider}>{item.provider}</Text>
-                  <Text className={styles.price}>
+                  <div className={styles.price}>
                     {item.price.toFixed(2)} {item.currency} 
-                    <Tooltip title={t('table.priceSortTip')}><QuestionCircleOutlined style={{fontSize: 12, marginLeft: 4, color: '#bfbfbf'}}/></Tooltip>
-                  </Text>
+                    <Tooltip title={t('table.priceSortTip')}><QuestionCircleOutlined style={{fontSize: 14, marginLeft: 8, color: '#94a3b8'}}/></Tooltip>
+                  </div>
                 </div>
                 <div className={styles.name}>{item.name}</div>
                 
-                <Divider style={{ margin: '12px 0' }} />
+                <Divider style={{ margin: '16px 0', borderColor: 'rgba(0,0,0,0.04)' }} />
                 
-                <Row gutter={[8, 8]} className={styles.details}>
-                  <Col span={12}><Text type="secondary">{t('table.cpu')}:</Text> {item.cpu} {t('table.cpuUnit')}</Col>
-                  <Col span={12}><Text type="secondary">{t('table.memory')}:</Text> {item.memory} {t('table.memoryUnit')}</Col>
-                  <Col span={12}><Text type="secondary">{t('table.disk')}:</Text> {item.disk} {t('table.diskUnit')}</Col>
-                  <Col span={12}><Text type="secondary">{t('table.monthlyTraffic')}:</Text> {(item.monthlyTraffic / 1000).toFixed(2)} TB</Col>
-                  <Col span={12}><Text type="secondary">{t('table.bandwidth')}:</Text> {(item.bandwidth / 1000).toFixed(2)} Gbps</Col>
-                  <Col span={12}><Text type="secondary">{t('table.location')}:</Text> {item.location}</Col>
+                <Row gutter={[12, 12]} className={styles.details}>
+                  <Col span={12}><Text type="secondary">{t('table.cpu')}:</Text> <span style={{fontWeight: 600}}>{item.cpu} {t('table.cpuUnit')}</span></Col>
+                  <Col span={12}><Text type="secondary">{t('table.memory')}:</Text> <span style={{fontWeight: 600}}>{item.memory} {t('table.memoryUnit')}</span></Col>
+                  <Col span={12}><Text type="secondary">{t('table.disk')}:</Text> <span style={{fontWeight: 600}}>{item.disk} {t('table.diskUnit')}</span></Col>
+                  <Col span={12}><Text type="secondary">{t('table.monthlyTraffic')}:</Text> <span style={{fontWeight: 600}}>{(item.monthlyTraffic / 1000).toFixed(2)} TB</span></Col>
+                  <Col span={12}><Text type="secondary">{t('table.bandwidth')}:</Text> <span style={{fontWeight: 600}}>{(item.bandwidth / 1000).toFixed(2)} Gbps</span></Col>
+                  <Col span={12}><Text type="secondary">{t('table.location')}:</Text> <span style={{fontWeight: 600}}>{item.location}</span></Col>
                 </Row>
                 
-                <Divider style={{ margin: '12px 0' }} />
+                <Divider style={{ margin: '16px 0', borderColor: 'rgba(0,0,0,0.04)' }} />
 
                 {item.remark && (
                   <div className={styles.remark}>
-                    <Text type="secondary">{t('table.remark')}:</Text> <Text>{item.remark}</Text>
+                    <Text type="secondary" style={{fontSize: 12, display: 'block', marginBottom: 4}}>{t('table.remark')}:</Text> 
+                    <Text>{item.remark}</Text>
                   </div>
                 )}
                 
-                <div className={styles.actions}>
+                <div className={styles.actions} style={{ marginTop: 20 }}>
                   {item.reviewUrl ? (
                     <Link href={item.reviewUrl} target="_blank" className={styles.actionBtn}>
                       {t('table.reviewLink')} <ExportOutlined />
@@ -112,6 +117,13 @@ const ProductCardList: React.FC<ProductCardProps> = ({ data, loading, pagination
                     target="_blank"
                     icon={<ShoppingCartOutlined />}
                     className={styles.orderBtn}
+                    style={{ 
+                      background: 'linear-gradient(to right, #6366f1, #8b5cf6)', 
+                      border: 'none',
+                      height: 48,
+                      borderRadius: 12,
+                      boxShadow: '0 4px 6px -1px rgba(99, 102, 241, 0.4)'
+                    }}
                   >
                     {t('table.orderButton')}
                   </Button>
@@ -130,7 +142,6 @@ const ProductCardList: React.FC<ProductCardProps> = ({ data, loading, pagination
             total={pagination.total}
             onChange={onPageChange}
             showSizeChanger
-            size="small"
             showTotal={(total) => t('pagination.total', { total })}
           />
         </div>

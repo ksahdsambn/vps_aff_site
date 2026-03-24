@@ -132,7 +132,13 @@ const ProductTable: React.FC<ProductTableProps> = ({ data, loading, pagination, 
   ];
 
   return (
-    <div style={{ backgroundColor: '#fff', padding: isMobile ? 8 : 16, borderRadius: 8, margin: isMobile ? '0 12px 24px' : '0 24px 24px' }}>
+    <div className="glass-panel" style={{ 
+      padding: isMobile ? 12 : 24, 
+      borderRadius: 16, 
+      margin: isMobile ? '0 12px 24px' : '0 24px 24px',
+      boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -4px rgba(0, 0, 0, 0.05)',
+      animation: 'springFadeIn 1s cubic-bezier(0.34, 1.56, 0.64, 1)',
+    }}>
       <Table
         columns={columns}
         dataSource={data}
@@ -143,9 +149,11 @@ const ProductTable: React.FC<ProductTableProps> = ({ data, loading, pagination, 
           showSizeChanger: true,
           pageSizeOptions: ['20', '50', '100'],
           showTotal: (total) => t('table.total', { total }),
+          position: ['bottomCenter'],
         }}
         onChange={onChange}
         scroll={{ x: 1200 }}
+        className="modern-table"
       />
     </div>
   );
