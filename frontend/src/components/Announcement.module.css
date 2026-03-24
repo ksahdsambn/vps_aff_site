@@ -1,9 +1,13 @@
 .container {
-  background-color: #fffbe6;
-  border: 1px solid #ffe58f;
-  margin: 16px 24px;
-  padding: 12px 16px;
-  border-radius: 8px;
+  background: rgba(254, 252, 232, 0.8);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(254, 240, 138, 0.5);
+  margin: 24px;
+  padding: 16px 24px;
+  border-radius: 16px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.03);
+  animation: springFadeIn 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .header {
@@ -16,9 +20,10 @@
 .title {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-weight: 600;
-  color: #d48806;
+  gap: 10px;
+  font-weight: 700;
+  color: #854d0e;
+  font-size: 1rem;
 }
 
 .icon {

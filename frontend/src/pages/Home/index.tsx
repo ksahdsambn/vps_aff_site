@@ -164,27 +164,54 @@ const Home: React.FC = () => {
   };
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f0f2f5', paddingBottom: 40 }}>
+    <div style={{ minHeight: '100vh', position: 'relative', overflow: 'hidden' }}>
+      {/* Background Decorative Elements */}
+      <div style={{
+        position: 'absolute',
+        top: -100,
+        right: -100,
+        width: 400,
+        height: 400,
+        background: 'radial-gradient(circle, rgba(99, 102, 241, 0.1) 0%, transparent 70%)',
+        borderRadius: '50%',
+        zIndex: -1,
+        filter: 'blur(60px)',
+      }} />
+      <div style={{
+        position: 'absolute',
+        bottom: 100,
+        left: -100,
+        width: 300,
+        height: 300,
+        background: 'radial-gradient(circle, rgba(139, 92, 246, 0.1) 0%, transparent 70%)',
+        borderRadius: '50%',
+        zIndex: -1,
+        filter: 'blur(50px)',
+      }} />
+
       <Header config={config} />
       <Announcement config={config} />
-      <FilterBar onFilterChange={handleFilterChange} />
+      
+      <div style={{ maxWidth: 1400, margin: '0 auto', position: 'relative', zIndex: 1 }}>
+        <FilterBar onFilterChange={handleFilterChange} />
 
-      {isMobile ? (
-        <ProductCardList
-          data={products}
-          loading={loading}
-          pagination={pagination}
-          onSortChange={handleCardSortChange}
-          onPageChange={handleCardPageChange}
-        />
-      ) : (
-        <ProductTable
-          data={products}
-          loading={loading}
-          pagination={pagination}
-          onChange={handleTableChange}
-        />
-      )}
+        {isMobile ? (
+          <ProductCardList
+            data={products}
+            loading={loading}
+            pagination={pagination}
+            onSortChange={handleCardSortChange}
+            onPageChange={handleCardPageChange}
+          />
+        ) : (
+          <ProductTable
+            data={products}
+            loading={loading}
+            pagination={pagination}
+            onChange={handleTableChange}
+          />
+        )}
+      </div>
     </div>
   );
 };
