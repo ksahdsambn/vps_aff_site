@@ -1,10 +1,9 @@
 import React from 'react';
 import { Card, Button, Typography, Pagination, Select, Row, Col, Divider, Tooltip, Empty, Tag } from 'antd';
 import { useTranslation } from 'react-i18next';
-import { ShoppingCartOutlined, ExportOutlined, QuestionCircleOutlined, CloudServerOutlined, RocketOutlined, DatabaseOutlined, GlobalOutlined, ThunderboltOutlined, InteractionOutlined } from '@ant-design/icons';
+import { ShoppingCartOutlined, ExportOutlined, QuestionCircleOutlined, GlobalOutlined, ThunderboltOutlined, InteractionOutlined } from '@ant-design/icons';
 import type { Product } from '../../api';
 import styles from './ProductCard.module.css';
-import VpsProgress from './VpsProgress';
 
 const { Text, Link } = Typography;
 
@@ -85,23 +84,20 @@ const ProductCardList: React.FC<ProductCardProps> = ({ data, loading, pagination
               <Row gutter={[16, 16]} className={styles.details}>
                 <Col span={12}>
                   <div style={{ marginBottom: 12 }}>
-                    <Text type="secondary" style={{ fontSize: 13 }}><CloudServerOutlined style={{marginRight: 6}}/>{t('table.cpu')}:</Text>
-                    <div style={{fontWeight: 700, marginBottom: 4}}>{item.cpu} {t('table.cpuUnit')}</div>
-                    <VpsProgress value={item.cpu} max={16} color="#6366f1" />
+                    <Text type="secondary" style={{ fontSize: 13 }}>{t('table.cpu')}:</Text>
+                    <div style={{fontWeight: 700}}>{item.cpu} {t('table.cpuUnit')}</div>
                   </div>
                 </Col>
                 <Col span={12}>
                   <div style={{ marginBottom: 12 }}>
-                    <Text type="secondary" style={{ fontSize: 13 }}><RocketOutlined style={{marginRight: 6}}/>{t('table.memory')}:</Text>
-                    <div style={{fontWeight: 700, marginBottom: 4}}>{item.memory} {t('table.memoryUnit')}</div>
-                    <VpsProgress value={item.memory} max={32768} color="#8b5cf6" />
+                    <Text type="secondary" style={{ fontSize: 13 }}>{t('table.memory')}:</Text>
+                    <div style={{fontWeight: 700}}>{item.memory} {t('table.memoryUnit')}</div>
                   </div>
                 </Col>
                 <Col span={12}>
                   <div style={{ marginBottom: 12 }}>
-                    <Text type="secondary" style={{ fontSize: 13 }}><DatabaseOutlined style={{marginRight: 6}}/>{t('table.disk')}:</Text>
-                    <div style={{fontWeight: 700, marginBottom: 4}}>{item.disk} {t('table.diskUnit')}</div>
-                    <VpsProgress value={item.disk} max={1024} color="#ec4899" />
+                    <Text type="secondary" style={{ fontSize: 13 }}>{t('table.disk')}:</Text>
+                    <div style={{fontWeight: 700}}>{item.disk} {t('table.diskUnit')}</div>
                   </div>
                 </Col>
                 <Col span={12}>
