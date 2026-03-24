@@ -2,9 +2,8 @@ import React from 'react';
 import { Table, Tooltip, Button, Typography, Tag } from 'antd';
 import type { ColumnsType, TableProps } from 'antd/es/table';
 import { useTranslation } from 'react-i18next';
-import { QuestionCircleOutlined, ShoppingCartOutlined, CloudServerOutlined, RocketOutlined, DatabaseOutlined } from '@ant-design/icons';
+import { QuestionCircleOutlined, ShoppingCartOutlined } from '@ant-design/icons';
 import type { Product } from '../../api';
-import VpsProgress from './VpsProgress';
 
 const { Text } = Typography;
 
@@ -44,57 +43,33 @@ const ProductTable: React.FC<ProductTableProps> = ({ data, loading, pagination, 
       render: (text) => <Text strong style={{ color: '#475569' }}>{text}</Text>
     },
     {
-      title: (
-        <span>
-          <CloudServerOutlined style={{ marginRight: 6 }} />
-          {t('table.cpu')}
-        </span>
-      ),
+      title: t('table.cpu'),
       dataIndex: 'cpu',
       key: 'cpu',
       sorter: true,
       width: 120,
       render: (val: number) => (
-        <div>
-          <Text style={{ fontSize: 13 }}>{val} {t('table.cpuUnit')}</Text>
-          <VpsProgress value={val} max={16} color="#6366f1" />
-        </div>
+        <Text style={{ fontSize: 13 }}>{val} {t('table.cpuUnit')}</Text>
       ),
     },
     {
-      title: (
-        <span>
-          <RocketOutlined style={{ marginRight: 6 }} />
-          {t('table.memory')}
-        </span>
-      ),
+      title: t('table.memory'),
       dataIndex: 'memory',
       key: 'memory',
       sorter: true,
       width: 120,
       render: (val: number) => (
-        <div>
-          <Text style={{ fontSize: 13 }}>{val} {t('table.memoryUnit')}</Text>
-          <VpsProgress value={val} max={32768} color="#8b5cf6" />
-        </div>
+        <Text style={{ fontSize: 13 }}>{val} {t('table.memoryUnit')}</Text>
       ),
     },
     {
-      title: (
-        <span>
-          <DatabaseOutlined style={{ marginRight: 6 }} />
-          {t('table.disk')}
-        </span>
-      ),
+      title: t('table.disk'),
       dataIndex: 'disk',
       key: 'disk',
       sorter: true,
       width: 120,
       render: (val: number) => (
-        <div>
-          <Text style={{ fontSize: 13 }}>{val} {t('table.diskUnit')}</Text>
-          <VpsProgress value={val} max={1024} color="#ec4899" />
-        </div>
+        <Text style={{ fontSize: 13 }}>{val} {t('table.diskUnit')}</Text>
       ),
     },
     {
