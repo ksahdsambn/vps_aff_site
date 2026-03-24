@@ -33,13 +33,15 @@ const ProductTable: React.FC<ProductTableProps> = ({ data, loading, pagination, 
       title: t('table.provider'),
       dataIndex: 'provider',
       key: 'provider',
+      width: 100,
       render: (text) => <Tag color="blue" style={{ borderRadius: 6, fontWeight: 600, padding: '2px 10px' }}>{text}</Tag>
     },
     {
       title: t('table.name'),
       dataIndex: 'name',
       key: 'name',
-      width: 200,
+      width: 150,
+      ellipsis: true,
       render: (text) => <Text strong style={{ color: '#475569' }}>{text}</Text>
     },
     {
@@ -47,7 +49,7 @@ const ProductTable: React.FC<ProductTableProps> = ({ data, loading, pagination, 
       dataIndex: 'cpu',
       key: 'cpu',
       sorter: true,
-      width: 120,
+      width: 80,
       render: (val: number) => (
         <Text style={{ fontSize: 13 }}>{val} {t('table.cpuUnit')}</Text>
       ),
@@ -57,7 +59,7 @@ const ProductTable: React.FC<ProductTableProps> = ({ data, loading, pagination, 
       dataIndex: 'memory',
       key: 'memory',
       sorter: true,
-      width: 120,
+      width: 80,
       render: (val: number) => (
         <Text style={{ fontSize: 13 }}>{val} {t('table.memoryUnit')}</Text>
       ),
@@ -67,7 +69,7 @@ const ProductTable: React.FC<ProductTableProps> = ({ data, loading, pagination, 
       dataIndex: 'disk',
       key: 'disk',
       sorter: true,
-      width: 120,
+      width: 80,
       render: (val: number) => (
         <Text style={{ fontSize: 13 }}>{val} {t('table.diskUnit')}</Text>
       ),
@@ -76,6 +78,7 @@ const ProductTable: React.FC<ProductTableProps> = ({ data, loading, pagination, 
       title: t('table.monthlyTraffic'),
       dataIndex: 'monthlyTraffic',
       key: 'monthlyTraffic',
+      width: 100,
       sorter: true,
       render: (val: number) => (
         <Tag color="cyan">
@@ -87,6 +90,7 @@ const ProductTable: React.FC<ProductTableProps> = ({ data, loading, pagination, 
       title: t('table.bandwidth'),
       dataIndex: 'bandwidth',
       key: 'bandwidth',
+      width: 100,
       sorter: true,
       render: (val: number) => (
           <Text strong style={{ color: '#0ea5e9' }}>{(val / 1000).toFixed(2)} Gbps</Text>
@@ -96,6 +100,7 @@ const ProductTable: React.FC<ProductTableProps> = ({ data, loading, pagination, 
       title: t('table.location'),
       dataIndex: 'location',
       key: 'location',
+      width: 80,
     },
     {
       title: (
@@ -108,6 +113,7 @@ const ProductTable: React.FC<ProductTableProps> = ({ data, loading, pagination, 
       ),
       dataIndex: 'price',
       key: 'price',
+      width: 120,
       sorter: true,
       render: (val: number, record: Product) => (
         <span style={{ fontSize: 16, fontWeight: 700, color: '#4f46e5' }}>
@@ -118,8 +124,7 @@ const ProductTable: React.FC<ProductTableProps> = ({ data, loading, pagination, 
     {
       title: t('table.order'),
       key: 'order',
-      fixed: 'right',
-      width: 120,
+      width: 100,
       render: (_, record: Product) => (
         <Button 
           type="primary" 
@@ -161,7 +166,7 @@ const ProductTable: React.FC<ProductTableProps> = ({ data, loading, pagination, 
           position: ['bottomCenter'],
         }}
         onChange={onChange}
-        scroll={{ x: 1200 }}
+        scroll={{ x: 'max-content' }}
         className="modern-table"
         onRow={(_, index) => ({
           className: `stagger-item stagger-delay-${((index ?? 0) % 10) + 1}`
