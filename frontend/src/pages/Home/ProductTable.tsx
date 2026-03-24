@@ -133,10 +133,16 @@ const ProductTable: React.FC<ProductTableProps> = ({ data, loading, pagination, 
           rel="noopener noreferrer"
           icon={<ShoppingCartOutlined />}
           style={{ 
-            borderRadius: 8, 
+            borderRadius: 6, 
             background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
             border: 'none',
-            boxShadow: '0 4px 6px -1px rgba(99, 102, 241, 0.4)'
+            boxShadow: '0 4px 6px -1px rgba(99, 102, 241, 0.4)',
+            fontSize: 12,
+            fontWeight: 600,
+            height: 28,
+            padding: '0 12px',
+            display: 'inline-flex',
+            alignItems: 'center'
           }}
         >
           {t('table.orderButton')}
