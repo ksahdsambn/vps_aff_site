@@ -94,7 +94,12 @@ const FilterBar: React.FC<FilterBarProps> = ({ onFilterChange }) => {
   };
 
   const filterContent = (
-    <div className={isMobile ? styles.mobileContent : styles.desktopContent}>
+    <div className={`${isMobile ? styles.mobileContent : styles.desktopContent} glass-panel`} style={{
+      padding: '20px 24px',
+      borderRadius: 20,
+      marginBottom: 24,
+      border: '1px solid rgba(255, 255, 255, 0.6)',
+    }}>
       <div className={styles.filterItem}>
         <div className={styles.label}>{t('filter.provider')}</div>
         <Select
@@ -106,6 +111,8 @@ const FilterBar: React.FC<FilterBarProps> = ({ onFilterChange }) => {
           options={providerOptions}
           style={{ minWidth: isMobile ? '100%' : '200px' }}
           maxTagCount="responsive"
+          size="large"
+          className="glass-selector"
         />
       </div>
 
@@ -122,6 +129,7 @@ const FilterBar: React.FC<FilterBarProps> = ({ onFilterChange }) => {
           value={keyword}
           onChange={(e) => handleKeywordChange(e.target.value)}
           style={{ minWidth: isMobile ? '100%' : '200px' }}
+          size="large"
         />
       </div>
 
@@ -138,14 +146,17 @@ const FilterBar: React.FC<FilterBarProps> = ({ onFilterChange }) => {
           value={location}
           onChange={(e) => handleLocationChange(e.target.value)}
           style={{ minWidth: isMobile ? '100%' : '200px' }}
+          size="large"
         />
       </div>
 
-      <div className={styles.actionItem}>
+      <div className={styles.actionItem} style={{ marginLeft: isMobile ? 0 : 'auto' }}>
         <Button 
           icon={<ClearOutlined />} 
           onClick={clearFilters}
           className={isMobile ? styles.fullWidthBtn : ''}
+          size="large"
+          style={{ borderRadius: 10 }}
         >
           {t('filter.clear')}
         </Button>
@@ -163,17 +174,19 @@ const FilterBar: React.FC<FilterBarProps> = ({ onFilterChange }) => {
             onClick={() => setDrawerVisible(true)}
             size="large"
             block
+            style={{ marginBottom: 24, height: 52, borderRadius: 16, fontSize: 16, fontWeight: 600, background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)', border: 'none' }}
           >
             {t('filter.filter')}
           </Button>
           <Drawer
-            title={t('filter.filter')}
+            title={<><FilterOutlined style={{marginRight: 8}}/>{t('filter.filter')}</>}
             placement="bottom"
             onClose={() => setDrawerVisible(false)}
             open={drawerVisible}
             height="auto"
+            styles={{ body: { padding: 0 } }}
           >
-            {filterContent}
+            <div style={{ padding: '24px 16px' }}>{filterContent}</div>
           </Drawer>
         </>
       ) : (
@@ -184,3 +197,4 @@ const FilterBar: React.FC<FilterBarProps> = ({ onFilterChange }) => {
 };
 
 export default FilterBar;
+

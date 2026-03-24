@@ -1,11 +1,12 @@
 import React from 'react';
-import { Table, Tooltip, Button, Typography } from 'antd';
+import { Table, Tooltip, Button, Typography, Tag } from 'antd';
 import type { ColumnsType, TableProps } from 'antd/es/table';
 import { useTranslation } from 'react-i18next';
-import { QuestionCircleOutlined, ShoppingCartOutlined, ExportOutlined } from '@ant-design/icons';
+import { QuestionCircleOutlined, ShoppingCartOutlined, CloudServerOutlined, RocketOutlined, DatabaseOutlined } from '@ant-design/icons';
 import type { Product } from '../../api';
+import VpsProgress from './VpsProgress';
 
-const { Text, Link } = Typography;
+const { Text } = Typography;
 
 interface ProductTableProps {
   data: Product[];
@@ -33,46 +34,88 @@ const ProductTable: React.FC<ProductTableProps> = ({ data, loading, pagination, 
       title: t('table.provider'),
       dataIndex: 'provider',
       key: 'provider',
+      render: (text) => <Tag color="blue" style={{ borderRadius: 6, fontWeight: 600, padding: '2px 10px' }}>{text}</Tag>
     },
     {
       title: t('table.name'),
       dataIndex: 'name',
       key: 'name',
+      width: 200,
+      render: (text) => <Text strong style={{ color: '#475569' }}>{text}</Text>
     },
     {
-      title: t('table.cpu'),
+      title: (
+        <span>
+          <CloudServerOutlined style={{ marginRight: 6 }} />
+          {t('table.cpu')}
+        </span>
+      ),
       dataIndex: 'cpu',
       key: 'cpu',
       sorter: true,
-      render: (val: number) => `${val} ${t('table.cpuUnit')}`,
+      width: 120,
+      render: (val: number) => (
+        <div>
+          <Text style={{ fontSize: 13 }}>{val} {t('table.cpuUnit')}</Text>
+          <VpsProgress value={val} max={16} color="#6366f1" />
+        </div>
+      ),
     },
     {
-      title: t('table.memory'),
+      title: (
+        <span>
+          <RocketOutlined style={{ marginRight: 6 }} />
+          {t('table.memory')}
+        </span>
+      ),
       dataIndex: 'memory',
       key: 'memory',
       sorter: true,
-      render: (val: number) => `${val} ${t('table.memoryUnit')}`,
+      width: 120,
+      render: (val: number) => (
+        <div>
+          <Text style={{ fontSize: 13 }}>{val} {t('table.memoryUnit')}</Text>
+          <VpsProgress value={val} max={32768} color="#8b5cf6" />
+        </div>
+      ),
     },
     {
-      title: t('table.disk'),
+      title: (
+        <span>
+          <DatabaseOutlined style={{ marginRight: 6 }} />
+          {t('table.disk')}
+        </span>
+      ),
       dataIndex: 'disk',
       key: 'disk',
       sorter: true,
-      render: (val: number) => `${val} ${t('table.diskUnit')}`,
+      width: 120,
+      render: (val: number) => (
+        <div>
+          <Text style={{ fontSize: 13 }}>{val} {t('table.diskUnit')}</Text>
+          <VpsProgress value={val} max={1024} color="#ec4899" />
+        </div>
+      ),
     },
     {
       title: t('table.monthlyTraffic'),
       dataIndex: 'monthlyTraffic',
       key: 'monthlyTraffic',
       sorter: true,
-      render: (val: number) => `${(val / 1000).toFixed(2)} TB`,
+      render: (val: number) => (
+        <Tag color="cyan">
+          {(val / 1000).toFixed(2)} TB
+        </Tag>
+      ),
     },
     {
       title: t('table.bandwidth'),
       dataIndex: 'bandwidth',
       key: 'bandwidth',
       sorter: true,
-      render: (val: number) => `${(val / 1000).toFixed(2)} Gbps`,
+      render: (val: number) => (
+          <Text strong style={{ color: '#0ea5e9' }}>{(val / 1000).toFixed(2)} Gbps</Text>
+      ),
     },
     {
       title: t('table.location'),
@@ -91,32 +134,17 @@ const ProductTable: React.FC<ProductTableProps> = ({ data, loading, pagination, 
       dataIndex: 'price',
       key: 'price',
       sorter: true,
-      render: (val: number, record: Product) => `${val.toFixed(2)} ${record.currency}`,
-    },
-    {
-      title: t('table.review'),
-      dataIndex: 'reviewUrl',
-      key: 'reviewUrl',
-      render: (url: string | null) => 
-        url ? (
-          <Link href={url} target="_blank" rel="noopener noreferrer">
-            {t('table.reviewLink')} <ExportOutlined />
-          </Link>
-        ) : (
-          <Text type="secondary">{t('table.noReview')}</Text>
-        ),
-    },
-    {
-      title: t('table.remark'),
-      dataIndex: 'remark',
-      key: 'remark',
-      render: (remark: string | null) => 
-        remark ? <Text>{remark}</Text> : <Text type="secondary">{t('table.noRemark')}</Text>,
+      render: (val: number, record: Product) => (
+        <span style={{ fontSize: 16, fontWeight: 700, color: '#4f46e5' }}>
+          {val.toFixed(2)} {record.currency}
+        </span>
+      ),
     },
     {
       title: t('table.order'),
       key: 'order',
       fixed: 'right',
+      width: 120,
       render: (_, record: Product) => (
         <Button 
           type="primary" 
@@ -124,6 +152,12 @@ const ProductTable: React.FC<ProductTableProps> = ({ data, loading, pagination, 
           target="_blank" 
           rel="noopener noreferrer"
           icon={<ShoppingCartOutlined />}
+          style={{ 
+            borderRadius: 8, 
+            background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
+            border: 'none',
+            boxShadow: '0 4px 6px -1px rgba(99, 102, 241, 0.4)'
+          }}
         >
           {t('table.orderButton')}
         </Button>
@@ -134,10 +168,10 @@ const ProductTable: React.FC<ProductTableProps> = ({ data, loading, pagination, 
   return (
     <div className="glass-panel" style={{ 
       padding: isMobile ? 12 : 24, 
-      borderRadius: 16, 
+      borderRadius: 20, 
       margin: isMobile ? '0 12px 24px' : '0 24px 24px',
       boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -4px rgba(0, 0, 0, 0.05)',
-      animation: 'springFadeIn 1s cubic-bezier(0.34, 1.56, 0.64, 1)',
+      overflow: 'hidden'
     }}>
       <Table
         columns={columns}
@@ -154,9 +188,13 @@ const ProductTable: React.FC<ProductTableProps> = ({ data, loading, pagination, 
         onChange={onChange}
         scroll={{ x: 1200 }}
         className="modern-table"
+        onRow={(_, index) => ({
+          className: `stagger-item stagger-delay-${((index ?? 0) % 10) + 1}`
+        })}
       />
     </div>
   );
 };
 
 export default ProductTable;
+

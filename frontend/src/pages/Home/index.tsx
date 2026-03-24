@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { message } from 'antd';
 import type { TableProps } from 'antd';
 import Header from '../../components/Header';
@@ -7,6 +7,7 @@ import FilterBar from '../../components/FilterBar';
 import type { FilterValues } from '../../components/FilterBar';
 import ProductTable from './ProductTable';
 import ProductCardList from './ProductCard';
+import ProductSkeleton from './ProductSkeleton';
 import {
   getConfig,
   getProducts,
@@ -30,7 +31,7 @@ interface SorterState {
 }
 
 const Home: React.FC = () => {
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const [config, setConfig] = useState<FrontendConfig | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
@@ -41,11 +42,11 @@ const Home: React.FC = () => {
   });
   const [filters, setFilters] = useState<FilterValues>({});
   const [sorter, setSorter] = useState<SorterState>({});
-  const currentPage = pagination.current;
-  const currentPageSize = pagination.pageSize;
+  
+  const isSmallScreen = windowWidth < 1200;
 
   useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    const handleResize = () => setWindowWidth(window.innerWidth);
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
@@ -73,55 +74,51 @@ const Home: React.FC = () => {
     };
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
+  const loadProducts = useCallback(async (cancelled: { current: boolean }) => {
+    setLoading(true);
 
-    const loadProducts = async () => {
-      setLoading(true);
+    try {
+      const params: ProductListParams = {
+        page: pagination.current,
+        pageSize: pagination.pageSize,
+        ...filters,
+      };
 
-      try {
-        const params: ProductListParams = {
-          page: currentPage,
-          pageSize: currentPageSize,
-          ...filters,
-        };
-
-        if (sorter.field && sorter.order) {
-          params.sortField = sorter.field;
-          params.sortOrder = sorter.order;
-        }
-
-        const res = await getProducts(params);
-        if (cancelled) {
-          return;
-        }
-
-        if (res.data.code === 0 && res.data.data) {
-          setProducts(res.data.data.list);
-          setPagination((prev) => ({
-            ...prev,
-            total: res.data.data?.total || 0,
-          }));
-        } else {
-          message.error(res.data.message || 'Failed to load products');
-        }
-      } catch (error: unknown) {
-        if (!cancelled) {
-          message.error(getApiErrorMessage(error) || 'Failed to request products');
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
+      if (sorter.field && sorter.order) {
+        params.sortField = sorter.field;
+        params.sortOrder = sorter.order;
       }
-    };
 
-    void loadProducts();
+      const res = await getProducts(params);
+      if (cancelled.current) return;
 
+      if (res.data.code === 0 && res.data.data) {
+        setProducts(res.data.data.list);
+        setPagination((prev) => ({
+          ...prev,
+          total: res.data.data?.total || 0,
+        }));
+      } else {
+        message.error(res.data.message || 'Failed to load products');
+      }
+    } catch (error: unknown) {
+      if (!cancelled.current) {
+        message.error(getApiErrorMessage(error) || 'Failed to request products');
+      }
+    } finally {
+      if (!cancelled.current) {
+        setLoading(false);
+      }
+    }
+  }, [pagination.current, pagination.pageSize, filters, sorter]);
+
+  useEffect(() => {
+    const cancelled = { current: false };
+    void loadProducts(cancelled);
     return () => {
-      cancelled = true;
+      cancelled.current = true;
     };
-  }, [currentPage, currentPageSize, filters, sorter]);
+  }, [loadProducts]);
 
   const handleFilterChange = (newFilters: FilterValues) => {
     setFilters(newFilters);
@@ -165,37 +162,49 @@ const Home: React.FC = () => {
 
   return (
     <div style={{ minHeight: '100vh', position: 'relative', overflow: 'hidden' }}>
-      {/* Background Decorative Elements */}
-      <div style={{
-        position: 'absolute',
-        top: -100,
-        right: -100,
-        width: 400,
-        height: 400,
-        background: 'radial-gradient(circle, rgba(99, 102, 241, 0.1) 0%, transparent 70%)',
-        borderRadius: '50%',
+      {/* Dynamic Background */}
+      <div className="interactive-bg" style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
         zIndex: -1,
-        filter: 'blur(60px)',
-      }} />
-      <div style={{
-        position: 'absolute',
-        bottom: 100,
-        left: -100,
-        width: 300,
-        height: 300,
-        background: 'radial-gradient(circle, rgba(139, 92, 246, 0.1) 0%, transparent 70%)',
-        borderRadius: '50%',
-        zIndex: -1,
-        filter: 'blur(50px)',
-      }} />
+        pointerEvents: 'none'
+      }}>
+        <div style={{
+          position: 'absolute',
+          top: '-10%',
+          right: '-10%',
+          width: '50%',
+          height: '50%',
+          background: 'radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, transparent 70%)',
+          borderRadius: '50%',
+          filter: 'blur(80px)',
+          animation: 'float 15s infinite ease-in-out'
+        }} />
+        <div style={{
+          position: 'absolute',
+          bottom: '5%',
+          left: '-5%',
+          width: '40%',
+          height: '40%',
+          background: 'radial-gradient(circle, rgba(139, 92, 246, 0.12) 0%, transparent 70%)',
+          borderRadius: '50%',
+          filter: 'blur(70px)',
+          animation: 'float 18s infinite ease-in-out reverse'
+        }} />
+      </div>
 
       <Header config={config} />
       <Announcement config={config} />
       
-      <div style={{ maxWidth: 1400, margin: '0 auto', position: 'relative', zIndex: 1 }}>
+      <div style={{ maxWidth: 1400, margin: '0 auto', position: 'relative', zIndex: 1, padding: isSmallScreen ? '0 12px' : '0 24px' }}>
         <FilterBar onFilterChange={handleFilterChange} />
 
-        {isMobile ? (
+        {loading ? (
+          <ProductSkeleton viewMode={isSmallScreen ? 'card' : 'table'} />
+        ) : isSmallScreen ? (
           <ProductCardList
             data={products}
             loading={loading}
@@ -217,3 +226,4 @@ const Home: React.FC = () => {
 };
 
 export default Home;
+
