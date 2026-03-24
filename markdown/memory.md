@@ -118,3 +118,24 @@
 - Verified that CPU, Memory, and Disk columns now only show text labels without icons.
 - Confirmed that the hardware specification sections in cards no longer show progress bars.
 - Verified `npm run build` and `npm run lint` pass in the frontend.
+
+## 2026-03-25 (UI Refinement)
+
+- Addressed horizontal scrollbar and layout issues in `ProductTable.tsx`:
+  - **Removed Horizontal Scrollbar**: Replaced fixed `scroll={{ x: 1200 }}` with `scroll={{ x: 'max-content' }}` and reduced column widths to fit standard desktop viewports (1200px+).
+  - **Optimized Column Layout**: 
+    - Updated specific column widths (Name: 150px, CPU/Memory/Disk: 80px, Order: 100px, etc.).
+    - Added `ellipsis: true` to the Product Name column.
+  - **Indented Order Column**: Removed `fixed: 'right'` from the "Order" column, allowing it to flow naturally and remain fully visible without horizontal scrolling.
+- Updated **Order** button text:
+  - Chinese: Changed "前往下单" to "下单".
+  - English: Changed "Order Now" to "order".
+- Pushed all changes to the GitHub repository.
+
+## Validation (2026-03-25 UI Refinement)
+
+- Verified that the horizontal scrollbar no longer appears on screens >= 1200px.
+- Confirmed the "Order" button is fully visible in the table without horizontal sliding.
+- Validated the button text translation in both Chinese and English modes.
+- Verified `npm run lint` passes (0 errors, 1 unrelated warning).
+
