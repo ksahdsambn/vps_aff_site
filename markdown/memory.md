@@ -127,15 +127,17 @@
     - Updated specific column widths (Name: 150px, CPU/Memory/Disk: 80px, Order: 100px, etc.).
     - Added `ellipsis: true` to the Product Name column.
   - **Indented Order Column**: Removed `fixed: 'right'` from the "Order" column, allowing it to flow naturally and remain fully visible without horizontal scrolling.
-- Updated **Order** button text:
-  - Chinese: Changed "前往下单" to "下单".
-  - English: Changed "Order Now" to "order".
-- Pushed all changes to the GitHub repository.
+- Adjusted **Order** button typography and scaling in `ProductTable.tsx`:
+  - **Font Synchronization**: Set button font size to `12px` and weight to `600` to perfectly match the provider brand tags (e.g., DMIT).
+  - **Proportional Resizing**: Reduced button height to `28px` and adjusted padding/border-radius to maintain a balanced, professional look that aligns with the visual weight of other table elements.
+- Rebuilt Docker containers and pushed all changes to the GitHub repository.
 
 ## Validation (2026-03-25 UI Refinement)
 
 - Verified that the horizontal scrollbar no longer appears on screens >= 1200px.
 - Confirmed the "Order" button is fully visible in the table without horizontal sliding.
+- Validated the button text and size match the provider tags for a cohesive UI.
 - Validated the button text translation in both Chinese and English modes.
 - Verified `npm run lint` passes (0 errors, 1 unrelated warning).
+
 
