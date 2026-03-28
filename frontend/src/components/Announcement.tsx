@@ -23,7 +23,7 @@ const Announcement: React.FC<AnnouncementProps> = ({ config }) => {
   }
 
   return (
-    <div className={styles.container}>
+    <aside className={styles.container} aria-label="Announcement">
       <div className={styles.header}>
         <div className={styles.title}>
           <NotificationOutlined className={styles.icon} />
@@ -45,7 +45,7 @@ const Announcement: React.FC<AnnouncementProps> = ({ config }) => {
       <div className={`${styles.content} ${expanded ? styles.expanded : styles.collapsed}`}>
         <ReactMarkdown>{content}</ReactMarkdown>
       </div>
-    </div>
+    </aside>
   );
 };
 

@@ -20,4 +20,15 @@ i18n
     },
   });
 
+// 语言代码到 HTML lang 属性的映射
+const langMap: Record<string, string> = { zh: 'zh-CN', en: 'en' };
+
+// 初始化时同步 HTML lang 属性
+document.documentElement.lang = langMap[i18n.language] || 'zh-CN';
+
+// 语言切换时同步 HTML lang 属性
+i18n.on('languageChanged', (lng: string) => {
+  document.documentElement.lang = langMap[lng] || 'zh-CN';
+});
+
 export default i18n;

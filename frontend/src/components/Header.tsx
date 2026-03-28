@@ -34,13 +34,13 @@ const Header: React.FC<HeaderProps> = ({ config }) => {
     <header className={styles.header}>
       <div className={styles.logoContainer}>
         {config?.site_logo && (
-          <img src={config.site_logo} alt="Logo" className={styles.logo} />
+          <img src={config.site_logo} alt="VPS Navi Logo" className={styles.logo} />
         )}
         <Title level={4} className={styles.title}>{title}</Title>
       </div>
       
       <div className={styles.actions}>
-        <Space className={styles.socialIcons}>
+        <nav aria-label="Social links"><Space className={styles.socialIcons}>
           {config?.link_telegram && (
             <a href={config.link_telegram} target="_blank" rel="noopener noreferrer">
               <SendOutlined className={styles.icon} />
@@ -61,7 +61,7 @@ const Header: React.FC<HeaderProps> = ({ config }) => {
               <TwitterOutlined className={styles.icon} />
             </a>
           )}
-        </Space>
+        </Space></nav>
         
         <Button 
           type="text" 
