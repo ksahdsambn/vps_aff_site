@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { message } from 'antd';
 import type { TableProps } from 'antd';
 import Header from '../../components/Header';
@@ -18,6 +19,7 @@ import type {
   Product,
   ProductListParams,
 } from '../../api';
+import SEO from '../../components/SEO';
 
 interface PaginationState {
   current: number;
@@ -32,6 +34,7 @@ interface SorterState {
 
 const Home: React.FC = () => {
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+  const { i18n } = useTranslation();
   const [config, setConfig] = useState<FrontendConfig | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
@@ -161,7 +164,12 @@ const Home: React.FC = () => {
   };
 
   return (
-    <div style={{ minHeight: '100vh', position: 'relative', overflow: 'hidden' }}>
+    <main style={{ minHeight: '100vh', position: 'relative', overflow: 'hidden' }}>
+      <SEO
+        title={i18n.language === 'zh' ? 'VPS导航 - 全球VPS价格对比与推荐' : 'VPS Navigator - Global VPS Price Comparison'}
+        description={i18n.language === 'zh' ? '实时对比全球VPS服务器价格，帮你找到最具性价比的VPS主机' : 'Compare VPS server prices worldwide and find the best deals'}
+        lang={i18n.language === 'zh' ? 'zh-CN' : 'en'}
+      />
       {/* Dynamic Background */}
       <div className="interactive-bg" style={{
         position: 'fixed',
@@ -199,7 +207,7 @@ const Home: React.FC = () => {
       <Header config={config} />
       <Announcement config={config} />
       
-      <div style={{ maxWidth: 1400, margin: '0 auto', position: 'relative', zIndex: 1, padding: isSmallScreen ? '0 12px' : '0 24px' }}>
+      <section aria-label="VPS Products" style={{ maxWidth: 1400, margin: '0 auto', position: 'relative', zIndex: 1, padding: isSmallScreen ? '0 12px' : '0 24px' }}>
         <FilterBar onFilterChange={handleFilterChange} />
 
         {loading ? (
@@ -220,8 +228,8 @@ const Home: React.FC = () => {
             onChange={handleTableChange}
           />
         )}
-      </div>
-    </div>
+      </section>
+    </main>
   );
 };
 

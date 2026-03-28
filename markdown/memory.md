@@ -140,4 +140,72 @@
 - Validated the button text translation in both Chinese and English modes.
 - Verified `npm run lint` passes (0 errors, 1 unrelated warning).
 
+## 2026-03-28 (SEO Optimization — 8 Phases Complete)
 
+按照 `VPS Navi SEO 优化 — AI 开发者实施指南.md` 严格按顺序执行方案 1→8，每阶段通过 TypeScript 编译测试后才进入下一阶段。
+
+### 方案 1：基础 Meta 标签 & HTML lang 修复 ✅
+- 修改 `frontend/index.html`：`lang="en"` → `lang="zh-CN"`
+- 新增 `<title>VPS导航 - 全球VPS价格对比与推荐 | VPS Navi</title>`
+- 新增 `meta description`、`meta keywords`、`canonical URL`
+- 新增 6 个 Open Graph 标签、3 个 Twitter Card 标签
+- **测试**: `npx tsc --noEmit` ✅
+
+### 方案 2：添加 robots.txt 和 sitemap.xml ✅
+- 新建 `frontend/public/robots.txt`（允许 `/`，禁止 `/admin/` 和 `/api/`）
+- 新建 `frontend/public/sitemap.xml`（首页 URL，daily 更新频率）
+- **测试**: `npx tsc --noEmit` ✅
+
+### 方案 3：语义化 HTML 重构 ✅
+- `Home/index.tsx`：最外层 `<div>` → `<main>`，产品容器 `<div>` → `<section aria-label="VPS Products">`
+- `Header.tsx`：Logo alt → "VPS Navi Logo"，社交链接包裹 `<nav aria-label="Social links">`
+- `Announcement.tsx`：外层 `<div>` → `<aside aria-label="Announcement">`
+- **测试**: `npx tsc --noEmit` ✅
+
+### 方案 4：动态 HTML lang 同步 i18n ✅
+- `i18n.ts`：添加 langMap 映射 + 初始化同步 + `languageChanged` 事件监听器同步 `document.documentElement.lang`
+- **测试**: `npx tsc --noEmit` ✅
+
+### 方案 5：字体加载性能优化 ✅
+- `index.html`：字体 `<link>` 添加 `media="print" onload="this.media='all'"`
+- 新增 `<noscript>` 回退
+- **测试**: `npx tsc --noEmit` ✅
+
+### 方案 6：添加 react-helmet-async 动态 Head 管理 ✅
+- 安装 `react-helmet-async`
+- 新建 `frontend/src/components/SEO.tsx`（动态 title/description/og/twitter 管理）
+- `main.tsx`：添加 `HelmetProvider` 包裹 `ConfigProvider`
+- `Home/index.tsx`：添加 `useTranslation` + `<SEO>` 组件（根据语言动态设置）
+- **测试**: `npx tsc --noEmit` ✅
+
+### 方案 7：添加结构化数据 (JSON-LD) ✅
+- `index.html`：在 `</head>` 前添加 `application/ld+json` 结构化数据（WebSite schema + SearchAction）
+- **测试**: `npx tsc --noEmit` ✅
+
+### 方案 8：SPA 预渲染 ✅
+- 安装 `vite-plugin-prerender` + `puppeteer`
+- `vite.config.ts`：添加 prerender 插件（使用 `createRequire` 加载 CJS 模块解决 ESM 兼容性）
+- 预渲染路由 `/`，renderAfterTime 3000ms
+- **注意**: 原指南使用 named export 不兼容该包实际 API，已修正为 default export + createRequire
+- **测试**: `npx tsc --noEmit` ✅; `npm run build` ✅ 构建+预渲染成功
+
+### 综合验证
+- TypeScript 编译检查: ✅ 无错误
+- Vite 构建检查: ✅ 构建成功，dist 目录生成正常，预渲染完成
+- 静态文件验证: ✅ dist/robots.txt 和 dist/sitemap.xml 内容正确
+- dist/index.html 包含: lang, description, keywords, canonical, og tags, twitter tags, JSON-LD, async font
+- Dev 服务器: ✅ Vite 启动成功
+
+### 修改文件清单
+| 文件 | 操作 | 涉及方案 |
+|---|---|---|
+| frontend/index.html | MODIFY | 1, 5, 7 |
+| frontend/public/robots.txt | NEW | 2 |
+| frontend/public/sitemap.xml | NEW | 2 |
+| frontend/src/pages/Home/index.tsx | MODIFY | 3, 6 |
+| frontend/src/components/Header.tsx | MODIFY | 3 |
+| frontend/src/components/Announcement.tsx | MODIFY | 3 |
+| frontend/src/i18n.ts | MODIFY | 4 |
+| frontend/src/components/SEO.tsx | NEW | 6 |
+| frontend/src/main.tsx | MODIFY | 6 |
+| frontend/vite.config.ts | MODIFY | 8 |
