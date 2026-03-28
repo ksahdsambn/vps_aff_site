@@ -209,3 +209,20 @@
 | frontend/src/components/SEO.tsx | NEW | 6 |
 | frontend/src/main.tsx | MODIFY | 6 |
 | frontend/vite.config.ts | MODIFY | 8 |
+
+## 2026-03-28 (Bugfix: SSR 渲染导致错误提示固化)
+
+**问题描述**: 当用户访问首页 `http://localhost/` 时，页面顶部会出现 `[Failed to load products]` 的 Ant Design 全局错误提示。
+**问题分析**: 
+- 由于我们采用了 `vite-plugin-prerender` + Puppeteer 进行首屏静态化构建 (SSG)。
+- 在构建期间，Puppeteer 环境内部并没有连通后端的 API（由于隔离在 Docker 前端构建镜像内）。
+- 导致 React 应用获取产品列表抛出异常，并触发了 `message.error("Failed to load products")`。
+- 这个错误提示生成的 DOM 节点被原封不动地序列化写入了 `dist/index.html`。
+- 当真实用户访问时，虽然客户端代码重新拉取到了真实的商品列表，但先前写入静态 HTML 的提示 DOM 并不会被抹除（因为插入在 React 根节点之外的 `body`）。
+
+**修复方案**:
+- 在 `frontend/src/pages/Home/index.tsx` 内封装了 `showError` 机制拦截构建期行为。
+- 通过探查特有变量 `window.__PRERENDER_INJECTED` 以及无头浏览器的 UA 标识 `navigator.userAgent.includes('HeadlessChrome')`。
+- 在检测为预渲染环境下，直接吃掉 API 错误消息，禁止弹出 Toast 冒泡进入快照。
+- 同步修改了 Dockerfile 的 Alpine 底层，注入 Chromium 的环境依赖，使得带有无头检测的预渲染得以安全稳定跑通。
+**验证结果**: 重新在 Docker 内执行 build 后，`http://localhost/` 已验证无此错误悬浮窗。
