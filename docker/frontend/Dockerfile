@@ -2,6 +2,17 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+# Fix Puppeteer in Alpine Linux
+RUN apk add --no-cache \
+      chromium \
+      nss \
+      freetype \
+      harfbuzz \
+      ca-certificates \
+      ttf-freefont
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
 
