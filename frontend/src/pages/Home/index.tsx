@@ -21,6 +21,15 @@ import type {
 } from '../../api';
 import SEO from '../../components/SEO';
 
+const showError = (msg: string) => {
+  // Prevent rendering error toasts during Vite prerendering (Puppeteer)
+  if (typeof window !== 'undefined') {
+    if ((window as any).__PRERENDER_INJECTED) return;
+    if (window.navigator?.userAgent?.includes('HeadlessChrome')) return;
+  }
+  message.error(msg);
+};
+
 interface PaginationState {
   current: number;
   pageSize: number;
@@ -65,7 +74,7 @@ const Home: React.FC = () => {
         }
       } catch (error: unknown) {
         if (!cancelled) {
-          message.error(getApiErrorMessage(error) || 'Failed to load site config');
+          showError(getApiErrorMessage(error) || 'Failed to load site config');
         }
       }
     };
@@ -102,11 +111,11 @@ const Home: React.FC = () => {
           total: res.data.data?.total || 0,
         }));
       } else {
-        message.error(res.data.message || 'Failed to load products');
+        showError(res.data.message || 'Failed to load products');
       }
     } catch (error: unknown) {
       if (!cancelled.current) {
-        message.error(getApiErrorMessage(error) || 'Failed to request products');
+        showError(getApiErrorMessage(error) || 'Failed to request products');
       }
     } finally {
       if (!cancelled.current) {
