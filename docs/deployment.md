@@ -37,11 +37,11 @@ apt install -y git
 
 ## 3. 推荐的目录规划
 
-推荐把项目放在 1Panel 网站目录下，便于统一管理。以下示例使用域名 `example.com`：
+推荐把项目放在 1Panel 网站目录下，便于统一管理。以下示例使用域名 `xmde.de`：
 
 ```bash
-mkdir -p /opt/1panel/www/sites/example.com/index
-cd /opt/1panel/www/sites/example.com/index
+mkdir -p /opt/1panel/www/sites/xmde.de/index
+cd /opt/1panel/www/sites/xmde.de/index
 git clone https://github.com/ksahdsambn/vps_aff_site.git
 cd vps_aff_site
 git checkout master
@@ -50,7 +50,7 @@ git checkout master
 推荐最终路径：
 
 ```text
-/opt/1panel/www/sites/example.com/index/vps_aff_site
+/opt/1panel/www/sites/xmde.de/index/vps_aff_site
 ```
 
 建议不要把仓库直接克隆到 `index` 根目录，而是保留一个独立子目录 `vps_aff_site`，这样网站目录和项目目录更容易区分。
@@ -81,7 +81,7 @@ git checkout master
 标准操作如下：
 
 ```bash
-cd /opt/1panel/www/sites/example.com/index
+cd /opt/1panel/www/sites/xmde.de/index
 git clone https://github.com/ksahdsambn/vps_aff_site.git
 cd vps_aff_site
 git checkout master
@@ -106,7 +106,7 @@ README.md
 在项目根目录执行：
 
 ```bash
-cd /opt/1panel/www/sites/example.com/index/vps_aff_site
+cd /opt/1panel/www/sites/xmde.de/index/vps_aff_site
 cp .env.example .env
 ```
 
@@ -118,7 +118,7 @@ MYSQL_DATABASE=vps_aff_db
 MYSQL_USER=vps_app
 MYSQL_PASSWORD=replace_with_strong_app_password
 JWT_SECRET=replace_with_long_random_secret
-CORS_ORIGIN=https://example.com,https://www.example.com
+CORS_ORIGIN=https://xmde.de,https://www.xmde.de
 DATABASE_URL=mysql://vps_app:replace_with_strong_app_password@db:3306/vps_aff_db
 PORT=3000
 ```
@@ -128,7 +128,7 @@ PORT=3000
 1. `MYSQL_PASSWORD` 和 `DATABASE_URL` 中的密码必须一致。
 2. `MYSQL_DATABASE` 和 `DATABASE_URL` 中的数据库名必须一致。
 3. `CORS_ORIGIN` 必须写正式访问地址，不要继续保留 `http://localhost`。
-4. 如果你只使用一个域名，例如只用 `https://example.com`，那就只写一个地址。
+4. 如果你只使用一个域名，例如只用 `https://xmde.de`，那就只写一个地址。
 5. `DATABASE_URL` 中数据库主机必须保持 `db`，不要改成 `localhost`。
 
 ## 7. 修改 `docker-compose.yml` 以适配 1Panel
@@ -221,18 +221,18 @@ ports:
 推荐填写方式：
 
 - 编排名称：`vps-aff-site`
-- Compose 文件路径：`/opt/1panel/www/sites/example.com/index/vps_aff_site/docker-compose.yml`
+- Compose 文件路径：`/opt/1panel/www/sites/xmde.de/index/vps_aff_site/docker-compose.yml`
 
 如果 1Panel 页面支持设置工作目录，请使用：
 
 ```text
-/opt/1panel/www/sites/example.com/index/vps_aff_site
+/opt/1panel/www/sites/xmde.de/index/vps_aff_site
 ```
 
 如果页面支持设置环境文件，请选择：
 
 ```text
-/opt/1panel/www/sites/example.com/index/vps_aff_site/.env
+/opt/1panel/www/sites/xmde.de/index/vps_aff_site/.env
 ```
 
 保存后启动编排。
@@ -259,7 +259,7 @@ ports:
 如果你在终端检查，也可以执行：
 
 ```bash
-cd /opt/1panel/www/sites/example.com/index/vps_aff_site
+cd /opt/1panel/www/sites/xmde.de/index/vps_aff_site
 docker compose ps
 ```
 
@@ -276,7 +276,7 @@ curl http://127.0.0.1:8080/api/products?page=1&pageSize=3
 如果后端启动异常，可以进一步看日志：
 
 ```bash
-cd /opt/1panel/www/sites/example.com/index/vps_aff_site
+cd /opt/1panel/www/sites/xmde.de/index/vps_aff_site
 docker compose logs backend --tail=100
 docker compose logs frontend --tail=100
 docker compose logs db --tail=100
@@ -296,15 +296,15 @@ docker compose logs db --tail=100
 
 #### 8.4.2 推荐填写方式
 
-假设正式域名为 `example.com`，则推荐：
+假设正式域名为 `xmde.de`，则推荐：
 
-- 主域名：`example.com`
+- 主域名：`xmde.de`
 - 代理地址：`http://127.0.0.1:8080`
 
-如果你还要支持 `www.example.com`，有两种做法：
+如果你还要支持 `www.xmde.de`，有两种做法：
 
 1. 在同一个网站里追加域名别名。
-2. 再建一个网站，把 `www.example.com` 反代到同一个地址。
+2. 再建一个网站，把 `www.xmde.de` 反代到同一个地址。
 
 #### 8.4.3 为什么只代理到前端容器
 
@@ -349,7 +349,7 @@ docker compose logs db --tail=100
 如果这里出现跨域问题，优先检查 `.env` 里的：
 
 ```env
-CORS_ORIGIN=https://example.com,https://www.example.com
+CORS_ORIGIN=https://xmde.de,https://www.xmde.de
 ```
 
 ## 10. 首次验收
@@ -359,7 +359,7 @@ CORS_ORIGIN=https://example.com,https://www.example.com
 访问：
 
 ```text
-https://example.com/
+https://xmde.de/
 ```
 
 确认：
@@ -373,7 +373,7 @@ https://example.com/
 访问：
 
 ```text
-https://example.com/admin/login
+https://xmde.de/admin/login
 ```
 
 ### 10.3 使用默认管理员登录
@@ -388,7 +388,7 @@ password: admin123
 如果这里登录失败，优先检查后端日志：
 
 ```bash
-cd /opt/1panel/www/sites/example.com/index/vps_aff_site
+cd /opt/1panel/www/sites/xmde.de/index/vps_aff_site
 docker compose logs backend --tail=100
 ```
 
@@ -413,7 +413,7 @@ docker compose logs backend --tail=100
 必要时也可以在终端执行：
 
 ```bash
-cd /opt/1panel/www/sites/example.com/index/vps_aff_site
+cd /opt/1panel/www/sites/xmde.de/index/vps_aff_site
 docker compose ps
 docker compose logs backend --tail=100
 docker compose logs frontend --tail=100
@@ -429,7 +429,7 @@ docker compose logs frontend --tail=100
 终端等价命令如下：
 
 ```bash
-cd /opt/1panel/www/sites/example.com/index/vps_aff_site
+cd /opt/1panel/www/sites/xmde.de/index/vps_aff_site
 docker compose restart
 ```
 
@@ -452,13 +452,13 @@ scripts/update-from-github.sh
 部署完成后的实际路径示例：
 
 ```text
-/opt/1panel/www/sites/example.com/index/vps_aff_site/scripts/update-from-github.sh
+/opt/1panel/www/sites/xmde.de/index/vps_aff_site/scripts/update-from-github.sh
 ```
 
 你也可以手动看一下脚本内容：
 
 ```bash
-cd /opt/1panel/www/sites/example.com/index/vps_aff_site
+cd /opt/1panel/www/sites/xmde.de/index/vps_aff_site
 cat scripts/update-from-github.sh
 ```
 
@@ -524,7 +524,7 @@ docker compose ps
 脚本内容直接填写这一行：
 
 ```bash
-/bin/bash /opt/1panel/www/sites/example.com/index/vps_aff_site/scripts/update-from-github.sh
+/bin/bash /opt/1panel/www/sites/xmde.de/index/vps_aff_site/scripts/update-from-github.sh
 ```
 
 如果你的项目目录不是本文示例路径，只需要把上面的绝对路径改成你的实际部署路径。
@@ -534,7 +534,7 @@ docker compose ps
 不要直接依赖定时执行，先在 1Panel 任务页手工执行一次，或者在终端执行：
 
 ```bash
-/bin/bash /opt/1panel/www/sites/example.com/index/vps_aff_site/scripts/update-from-github.sh
+/bin/bash /opt/1panel/www/sites/xmde.de/index/vps_aff_site/scripts/update-from-github.sh
 ```
 
 手工执行成功后，再启用周期调度。
@@ -569,7 +569,7 @@ docker compose ps
 例如：
 
 ```bash
-cd /opt/1panel/www/sites/example.com/index/vps_aff_site
+cd /opt/1panel/www/sites/xmde.de/index/vps_aff_site
 git remote set-url origin git@github.com:ksahdsambn/vps_aff_site.git
 ```
 
@@ -624,7 +624,7 @@ http://127.0.0.1:8080
 优先检查：
 
 ```bash
-cd /opt/1panel/www/sites/example.com/index/vps_aff_site
+cd /opt/1panel/www/sites/xmde.de/index/vps_aff_site
 docker compose logs backend --tail=100
 ```
 
@@ -639,7 +639,7 @@ docker compose logs backend --tail=100
 优先检查 `.env`：
 
 ```env
-CORS_ORIGIN=https://example.com,https://www.example.com
+CORS_ORIGIN=https://xmde.de,https://www.xmde.de
 ```
 
 最常见错误是：
@@ -659,7 +659,7 @@ CORS_ORIGIN=https://example.com,https://www.example.com
 可手工验证：
 
 ```bash
-cd /opt/1panel/www/sites/example.com/index/vps_aff_site
+cd /opt/1panel/www/sites/xmde.de/index/vps_aff_site
 git log --oneline -n 3
 docker compose ps
 docker compose logs frontend --tail=50
