@@ -130,7 +130,10 @@ PORT=3000
 3. `CORS_ORIGIN` 必须写正式访问地址，不要继续保留 `http://localhost`。
 4. 如果你只使用一个域名，例如只用 `https://xmde.de`，那就只写一个地址。
 5. `DATABASE_URL` 中数据库主机必须保持 `db`，不要改成 `localhost`。
+  
 
+
+  
 ## 7. 修改 `docker-compose.yml` 以适配 1Panel
 
 当前项目默认把前端容器直接发布到宿主机 `80` 端口。这个写法在 1Panel 场景下不合适，因为：
