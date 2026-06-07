@@ -3,7 +3,7 @@ import { PrismaClient } from '../generated/prisma/client';
 
 const DEFAULT_ADMIN = {
   username: 'admin',
-  password: 'admin123',
+  password: 'pDkj&Gr%WHp2g4@pZ@^o&^b',
 };
 
 const DEFAULT_CONFIGS = [
