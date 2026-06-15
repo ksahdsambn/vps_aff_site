@@ -1,20 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getConfig = getConfig;
-const client_1 = require("../generated/prisma/client");
-const adapter_mariadb_1 = require("@prisma/adapter-mariadb");
+const db_1 = require("../utils/db");
 const response_1 = require("../utils/response");
 const types_1 = require("../types");
-// Create Prisma client with adapter
-const adapter = new adapter_mariadb_1.PrismaMariaDb({
-    host: process.env.DATABASE_HOST || 'localhost',
-    user: process.env.DATABASE_USER || 'root',
-    password: process.env.DATABASE_PASSWORD || 'password',
-    database: process.env.DATABASE_NAME || 'vps_aff_db',
-    port: parseInt(process.env.DATABASE_PORT || '3306'),
-    connectionLimit: 10,
-});
-const prisma = new client_1.PrismaClient({ adapter });
 /**
  * GET /api/config
  * 前端系统配置接口
@@ -22,7 +11,7 @@ const prisma = new client_1.PrismaClient({ adapter });
  */
 async function getConfig(_req, res, _next) {
     try {
-        const configs = await prisma.systemConfig.findMany();
+        const configs = await db_1.prisma.systemConfig.findMany();
         // 将配置数组转为 key-value 对象
         const configMap = {};
         for (const config of configs) {

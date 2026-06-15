@@ -99,6 +99,14 @@ export interface ProductFormData {
   affiliateUrl: string;
 }
 
+/**
+ * 产品更新 payload：所有字段可选。
+ * 后端 updateProduct 已按 PATCH 语义实现，仅更新 body 中出现的字段。
+ * 编辑场景下前端应只发送本次实际改动的字段，避免「未改动的字段被
+ * 用默认单位重新换算一次」导致的数据扭曲（见 Bug #5）。
+ */
+export type ProductUpdatePayload = Partial<ProductFormData>;
+
 export interface Product {
   id: number;
   provider: string;
@@ -177,6 +185,42 @@ export const getApiStatusCode = (error: unknown): number | undefined => {
   return undefined;
 };
 
+/**
+ * 解析 JWT 并判断是否已过期（或格式无效）。
+ *
+ * 仅做本地 exp 校验，不验证签名（签名验证由后端负责）。
+ * 用于 AuthGuard 在渲染受保护页面之前提前拦截已过期/损坏的 token，
+ * 避免页面挂载后才在每个 API 请求上收到 401 再硬跳转，造成 UI 闪烁。
+ */
+export const isTokenExpired = (token: string | null): boolean => {
+  if (!token) {
+    return true;
+  }
+
+  const parts = token.split('.');
+  if (parts.length !== 3) {
+    return true;
+  }
+
+  try {
+    // JWT payload 使用 base64url 编码：补齐 padding 并转换 URL 安全字符。
+    const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64 + '==='.slice((base64.length + 3) % 4);
+    // atob 在浏览器环境可用；Node 19+ 也提供全局 atob。
+    const payload = JSON.parse(atob(padded)) as { exp?: number };
+
+    if (typeof payload.exp !== 'number') {
+      // 没有 exp 字段，视为无效。
+      return true;
+    }
+
+    // exp 是秒级时间戳。留 1 秒缓冲避免边界竞争。
+    return payload.exp * 1000 <= Date.now() + 1000;
+  } catch {
+    return true;
+  }
+};
+
 // ============================
 // 前端公开 API
 // ============================
@@ -209,8 +253,8 @@ export const adminGetProducts = (params?: AdminProductListParams) =>
 export const adminAddProduct = (data: ProductFormData) =>
   api.post<ApiResponse<Product>>('/admin/products', data);
 
-/** 更新产品 */
-export const adminUpdateProduct = (id: number, data: ProductFormData) =>
+/** 更新产品（仅发送改动的字段） */
+export const adminUpdateProduct = (id: number, data: ProductUpdatePayload) =>
   api.put<ApiResponse<Product>>(`/admin/products/${id}`, data);
 
 /** 删除产品 */

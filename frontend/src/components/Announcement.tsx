@@ -5,6 +5,7 @@ import { CaretDownOutlined, CaretUpOutlined, NotificationOutlined } from '@ant-d
 import { Button } from 'antd';
 import styles from './Announcement.module.css';
 import type { FrontendConfig } from '../api';
+import { markdownOptions } from '../utils/markdown';
 
 interface AnnouncementProps {
   config?: FrontendConfig | null;
@@ -43,7 +44,7 @@ const Announcement: React.FC<AnnouncementProps> = ({ config }) => {
         </Button>
       </div>
       <div className={`${styles.content} ${expanded ? styles.expanded : styles.collapsed}`}>
-        <ReactMarkdown>{content}</ReactMarkdown>
+        <ReactMarkdown {...markdownOptions}>{content}</ReactMarkdown>
       </div>
     </aside>
   );

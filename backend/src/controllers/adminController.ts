@@ -1,10 +1,10 @@
 import { Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import { PrismaClient } from '../generated/prisma/client';
-import { PrismaMariaDb } from '@prisma/adapter-mariadb';
+import { prisma } from '../utils/db';
 import { AuthRequest } from '../middleware/auth';
 import { successResponse, errorResponse } from '../utils/response';
+import { getJwtSecret } from '../utils/secrets';
 import {
   ERROR_CODES,
   ProductCreateInput,
@@ -12,16 +12,17 @@ import {
   ConfigUpdateInput,
 } from '../types';
 
-const adapter = new PrismaMariaDb({
-  host: process.env.DATABASE_HOST || 'localhost',
-  user: process.env.DATABASE_USER || 'root',
-  password: process.env.DATABASE_PASSWORD || 'password',
-  database: process.env.DATABASE_NAME || 'vps_aff_db',
-  port: parseInt(process.env.DATABASE_PORT || '3306', 10),
-  connectionLimit: 10,
-});
-
-const prisma = new PrismaClient({ adapter });
+/**
+ * 用于抹平登录时序侧信道的占位 bcrypt hash。
+ *
+ * 当用户名不存在时，原始实现会立即返回（不执行 bcrypt.compare），
+ * 而存在用户名时则要跑一次 ~100ms 的 bcrypt 比较 —— 攻击者可据此
+ * 通过响应耗时枚举出有效用户名。
+ *
+ * 这里在模块加载时预生成一个 dummy hash，用户不存在时也执行一次
+ * bcrypt.compare，使两条分支耗时接近一致。
+ */
+const DUMMY_PASSWORD_HASH = bcrypt.hashSync('__nonexistent_user_placeholder__', 10);
 
 function normalizeRequiredString(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
@@ -125,6 +126,8 @@ export async function login(req: AuthRequest, res: Response, _next: NextFunction
     });
 
     if (!admin) {
+      // 用户名不存在时也执行一次 bcrypt 比较，抹平响应时序，防止用户名枚举。
+      await bcrypt.compare(password, DUMMY_PASSWORD_HASH);
       errorResponse(res, ERROR_CODES.LOGIN_FAILED, 'Invalid username or password', 401);
       return;
     }
@@ -135,10 +138,9 @@ export async function login(req: AuthRequest, res: Response, _next: NextFunction
       return;
     }
 
-    const jwtSecret = process.env.JWT_SECRET || 'default_jwt_secret';
     const token = jwt.sign(
       { adminId: admin.id, username: admin.username },
-      jwtSecret,
+      getJwtSecret(),
       { expiresIn: '30m' },
     );
 
@@ -429,9 +431,13 @@ export async function getAdminProducts(req: AuthRequest, res: Response, _next: N
       ];
     }
 
-    if (query.isDeleted !== undefined) {
-      where.isDeleted = query.isDeleted === true || query.isDeleted === ('true' as unknown as boolean);
-    }
+    // Express query 参数恒为字符串（或字符串数组），而类型标注为 boolean。
+    // 显式按字符串解析，避免布尔比较恒为 false 的隐式 bug。
+    const isDeletedParam = query.isDeleted;
+    const isDeleted = isDeletedParam === undefined
+      ? false
+      : (isDeletedParam === true || isDeletedParam === 'true');
+    where.isDeleted = isDeleted;
 
     const [total, list] = await Promise.all([
       prisma.product.count({ where }),

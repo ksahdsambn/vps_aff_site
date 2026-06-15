@@ -1,9 +1,10 @@
 import bcrypt from 'bcryptjs';
 import { PrismaClient } from '../generated/prisma/client';
+import { getAdminUsername, getAdminSeedPassword } from './secrets';
 
+// 用户名允许通过 ADMIN_USERNAME 覆盖；口令必须由 ADMIN_PASSWORD 提供（见 getAdminSeedPassword）。
 const DEFAULT_ADMIN = {
-  username: 'admin',
-  password: '<redacted-admin-password>',
+  username: getAdminUsername(),
 };
 
 const DEFAULT_CONFIGS = [
@@ -89,16 +90,22 @@ const PAGINATION_SAMPLE_PRODUCTS = Array.from({ length: 48 }, (_, index) => {
 const SAMPLE_PRODUCTS = [...CORE_SAMPLE_PRODUCTS, ...PAGINATION_SAMPLE_PRODUCTS];
 
 export async function seedDatabase(prisma: PrismaClient): Promise<void> {
-  const passwordHash = await bcrypt.hash(DEFAULT_ADMIN.password, 10);
+  const adminPassword = getAdminSeedPassword();
 
-  await prisma.admin.upsert({
-    where: { username: DEFAULT_ADMIN.username },
-    update: {},
-    create: {
-      username: DEFAULT_ADMIN.username,
-      passwordHash,
-    },
-  });
+  // 仅当提供了 ADMIN_PASSWORD 时才 upsert 管理员账号。
+  // 生产环境缺失会由 getAdminSeedPassword 抛错并在 seedRuntime 中以非零码退出。
+  if (adminPassword !== null) {
+    const passwordHash = await bcrypt.hash(adminPassword, 10);
+
+    await prisma.admin.upsert({
+      where: { username: DEFAULT_ADMIN.username },
+      update: {},
+      create: {
+        username: DEFAULT_ADMIN.username,
+        passwordHash,
+      },
+    });
+  }
 
   for (const config of DEFAULT_CONFIGS) {
     await prisma.systemConfig.upsert({

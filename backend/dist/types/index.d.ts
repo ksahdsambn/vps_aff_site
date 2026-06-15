@@ -62,12 +62,16 @@ export interface ProductListQuery {
 }
 /**
  * 后台产品列表查询参数
+ *
+ * 注意：Express 的 req.query 恒为字符串/字符串数组，运行时不会是真正的
+ * number/boolean。这里保留 TS 类型以便阅读，但 controller 中需对 isDeleted
+ * / page / pageSize 等显式做字符串解析。
  */
 export interface AdminProductListQuery {
     keyword?: string;
     page?: number;
     pageSize?: number;
-    isDeleted?: boolean;
+    isDeleted?: boolean | string;
 }
 /**
  * 分页响应结构

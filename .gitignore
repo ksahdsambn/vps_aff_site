@@ -1,0 +1,25 @@
+# ---- 环境变量 / 密钥（切勿提交） ----
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+
+# ---- 依赖 ----
+node_modules/
+**/node_modules/
+
+# ---- 构建产物 ----
+dist/
+build/
+**/dist/
+**/build/
+
+# Prisma 生成代码（由 prisma generate 产出，不入库）
+**/src/generated/prisma/
+
+# ---- 日志 / 系统文件 ----
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db

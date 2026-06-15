@@ -1,19 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
-import { PrismaClient } from '../generated/prisma/client';
-import { PrismaMariaDb } from '@prisma/adapter-mariadb';
+import { prisma } from '../utils/db';
 import { successResponse, errorResponse } from '../utils/response';
 import { ERROR_CODES, ProductListQuery } from '../types';
-
-const adapter = new PrismaMariaDb({
-  host: process.env.DATABASE_HOST || 'localhost',
-  user: process.env.DATABASE_USER || 'root',
-  password: process.env.DATABASE_PASSWORD || 'password',
-  database: process.env.DATABASE_NAME || 'vps_aff_db',
-  port: parseInt(process.env.DATABASE_PORT || '3306', 10),
-  connectionLimit: 10,
-});
-
-const prisma = new PrismaClient({ adapter });
 
 const ALLOWED_SORT_FIELDS = ['cpu', 'memory', 'disk', 'monthlyTraffic', 'bandwidth', 'price'];
 

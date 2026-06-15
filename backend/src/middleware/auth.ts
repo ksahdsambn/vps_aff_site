@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { getJwtSecret } from '../utils/secrets';
 
 // 扩展 Request 接口以包含 admin 属性
 export interface AuthRequest extends Request {
@@ -29,8 +30,7 @@ export function auth(req: AuthRequest, res: Response, next: NextFunction): void 
   const token = authHeader.substring(7); // 去掉 "Bearer " 前缀
 
   try {
-    const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
-    const decoded = jwt.verify(token, JWT_SECRET) as {
+    const decoded = jwt.verify(token, getJwtSecret()) as {
       adminId: number;
       username: string;
     };

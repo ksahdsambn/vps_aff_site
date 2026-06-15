@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Tabs, Input, Button, message, Card, Row, Col, Typography } from 'antd';
 import ReactMarkdown from 'react-markdown';
 import { adminGetConfig, adminUpdateConfig, getApiErrorMessage } from '../../api';
+import { markdownOptions } from '../../utils/markdown';
 
 const { Title } = Typography;
 
@@ -103,7 +104,7 @@ const Announcement: React.FC = () => {
           }}
         >
           {content ? (
-            <ReactMarkdown>{content}</ReactMarkdown>
+            <ReactMarkdown {...markdownOptions}>{content}</ReactMarkdown>
           ) : (
             <div style={{ color: '#999' }}>No announcement content</div>
           )}

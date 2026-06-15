@@ -19,7 +19,17 @@ interface FilterBarProps {
 
 const FilterBar: React.FC<FilterBarProps> = ({ onFilterChange }) => {
   const { t } = useTranslation();
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  // 初始值在 lazy initializer 中计算：仅在非预渲染环境下读取真实 innerWidth，
+  // 预渲染（vite-plugin-prerender 注入 __PRERENDER_INJECTED）时使用桌面默认。
+  // 这样既能避免预渲染 HTML 与客户端首帧不一致的 hydration mismatch，
+  // 又不需要在 effect 中同步 setState（会触发 react-hooks/set-state-in-effect）。
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    if ((window as Window & { __PRERENDER_INJECTED?: unknown }).__PRERENDER_INJECTED) {
+      return false;
+    }
+    return window.innerWidth < 768;
+  });
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);

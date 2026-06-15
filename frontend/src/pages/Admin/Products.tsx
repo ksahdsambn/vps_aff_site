@@ -20,7 +20,7 @@ import {
   adminDeleteProduct,
   getApiErrorMessage,
 } from '../../api';
-import type { Product, ProductFormData } from '../../api';
+import type { Product, ProductFormData, ProductUpdatePayload } from '../../api';
 
 const { Option } = Select;
 
@@ -53,6 +53,8 @@ const Products: React.FC = () => {
   const [reloadVersion, setReloadVersion] = useState(0);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
+  // 编辑模式下保存原始记录，用于提交时只发送本次实际改动的字段（见 Bug #5）。
+  const [editingRecord, setEditingRecord] = useState<Product | null>(null);
   const [form] = Form.useForm<ProductFormValues>();
 
   useEffect(() => {
@@ -117,6 +119,7 @@ const Products: React.FC = () => {
 
   const showAddModal = () => {
     setEditingId(null);
+    setEditingRecord(null);
     form.resetFields();
     form.setFieldsValue({
       monthlyTrafficUnit: 'GB',
@@ -128,6 +131,10 @@ const Products: React.FC = () => {
 
   const showEditModal = (record: Product) => {
     setEditingId(record.id);
+    setEditingRecord(record);
+    // 后端按统一单位 GB / Mbps 存储数值。编辑时回填原始数值，单位默认
+    // 显示为 GB / Mbps。仅当用户实际改动了对应字段，提交时才把它包含
+    // 进 payload，避免「未改动的字段被用默认单位重新换算一次」。
     form.setFieldsValue({
       provider: record.provider,
       name: record.name,
@@ -176,30 +183,74 @@ const Products: React.FC = () => {
       return;
     }
 
-    const payload: ProductFormData = {
-      provider: values.provider,
-      name: values.name,
-      cpu: values.cpu,
-      memory: values.memory,
-      disk: values.disk,
-      monthlyTraffic: {
-        value: values.monthlyTrafficValue,
-        unit: values.monthlyTrafficUnit,
-      },
-      bandwidth: {
-        value: values.bandwidthValue,
-        unit: values.bandwidthUnit,
-      },
-      location: values.location,
-      price: values.price,
-      currency: values.currency.toUpperCase(),
-      reviewUrl: values.reviewUrl,
-      remark: values.remark,
-      affiliateUrl: values.affiliateUrl,
-    };
+    const currency = values.currency.toUpperCase();
 
     try {
-      if (editingId !== null) {
+      if (editingId !== null && editingRecord) {
+        // 编辑模式：只发送与原始记录相比实际改动的字段。
+        // 这样若用户没有改 traffic/bandwidth，就不会用表单的默认单位
+        // 把存储值重新换算一遍（见 Bug #5）。
+        const payload: ProductUpdatePayload = {};
+
+        if (values.provider !== editingRecord.provider) {
+          payload.provider = values.provider;
+        }
+        if (values.name !== editingRecord.name) {
+          payload.name = values.name;
+        }
+        if (values.cpu !== editingRecord.cpu) {
+          payload.cpu = values.cpu;
+        }
+        if (values.memory !== editingRecord.memory) {
+          payload.memory = values.memory;
+        }
+        if (values.disk !== editingRecord.disk) {
+          payload.disk = values.disk;
+        }
+        if (values.location !== editingRecord.location) {
+          payload.location = values.location;
+        }
+        if (values.price !== editingRecord.price) {
+          payload.price = values.price;
+        }
+        if (currency !== editingRecord.currency) {
+          payload.currency = currency;
+        }
+        const newReviewUrl = values.reviewUrl || null;
+        if ((newReviewUrl ?? null) !== (editingRecord.reviewUrl ?? null)) {
+          payload.reviewUrl = values.reviewUrl;
+        }
+        const newRemark = values.remark || null;
+        if ((newRemark ?? null) !== (editingRecord.remark ?? null)) {
+          payload.remark = values.remark;
+        }
+        if (values.affiliateUrl !== editingRecord.affiliateUrl) {
+          payload.affiliateUrl = values.affiliateUrl;
+        }
+
+        // 流量/带宽：只有当数值或单位任一发生变化才发送。
+        // 存储值统一为 GB / Mbps；编辑回填时单位默认是 GB / Mbps，
+        // 所以如果用户没动这两个字段，下面的对比恒等，不会被包含进 payload。
+        const trafficNormalized = values.monthlyTrafficUnit === 'TB'
+          ? values.monthlyTrafficValue * 1000
+          : values.monthlyTrafficValue;
+        if (trafficNormalized !== editingRecord.monthlyTraffic) {
+          payload.monthlyTraffic = {
+            value: values.monthlyTrafficValue,
+            unit: values.monthlyTrafficUnit,
+          };
+        }
+
+        const bandwidthNormalized = values.bandwidthUnit === 'Gbps'
+          ? values.bandwidthValue * 1000
+          : values.bandwidthValue;
+        if (bandwidthNormalized !== editingRecord.bandwidth) {
+          payload.bandwidth = {
+            value: values.bandwidthValue,
+            unit: values.bandwidthUnit,
+          };
+        }
+
         const res = await adminUpdateProduct(editingId, payload);
         if (res.data.code !== 0) {
           message.error(res.data.message || 'Update failed');
@@ -211,6 +262,29 @@ const Products: React.FC = () => {
         refreshCurrentPage();
         return;
       }
+
+      // 新增模式：发送完整 payload。
+      const payload: ProductFormData = {
+        provider: values.provider,
+        name: values.name,
+        cpu: values.cpu,
+        memory: values.memory,
+        disk: values.disk,
+        monthlyTraffic: {
+          value: values.monthlyTrafficValue,
+          unit: values.monthlyTrafficUnit,
+        },
+        bandwidth: {
+          value: values.bandwidthValue,
+          unit: values.bandwidthUnit,
+        },
+        location: values.location,
+        price: values.price,
+        currency,
+        reviewUrl: values.reviewUrl,
+        remark: values.remark,
+        affiliateUrl: values.affiliateUrl,
+      };
 
       const res = await adminAddProduct(payload);
       if (res.data.code !== 0) {
@@ -326,7 +400,11 @@ const Products: React.FC = () => {
           </Space>
 
           <Space size="large" style={{ display: 'flex' }}>
-            <Form.Item label="Monthly traffic" required>
+            <Form.Item
+              label="Monthly traffic"
+              required
+              tooltip="后台统一按 GB 存储。编辑时数值会以原始值显示，请确认单位后再修改；不改动该字段不会被覆盖。"
+            >
               <Input.Group compact>
                 <Form.Item name="monthlyTrafficValue" noStyle rules={[{ required: true }]}>
                   <InputNumber min={0} style={{ width: '60%' }} />
@@ -340,7 +418,11 @@ const Products: React.FC = () => {
               </Input.Group>
             </Form.Item>
 
-            <Form.Item label="Bandwidth" required>
+            <Form.Item
+              label="Bandwidth"
+              required
+              tooltip="后台统一按 Mbps 存储。编辑时数值会以原始值显示，请确认单位后再修改；不改动该字段不会被覆盖。"
+            >
               <Input.Group compact>
                 <Form.Item name="bandwidthValue" noStyle rules={[{ required: true }]}>
                   <InputNumber min={1} style={{ width: '60%' }} />
