@@ -24,7 +24,7 @@ import SEO from '../../components/SEO';
 const showError = (msg: string) => {
   // Prevent rendering error toasts during Vite prerendering (Puppeteer)
   if (typeof window !== 'undefined') {
-    if ((window as any).__PRERENDER_INJECTED) return;
+    if ((window as Window & { __PRERENDER_INJECTED?: unknown }).__PRERENDER_INJECTED) return;
     if (window.navigator?.userAgent?.includes('HeadlessChrome')) return;
   }
   message.error(msg);
@@ -42,7 +42,17 @@ interface SorterState {
 }
 
 const Home: React.FC = () => {
-  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+  // 初始值在 lazy initializer 中计算：仅在非预渲染环境下读取真实 innerWidth，
+  // 预渲染（vite-plugin-prerender 注入 __PRERENDER_INJECTED）时使用桌面默认。
+  // 这样既能避免预渲染 HTML 与客户端首帧不一致的 hydration mismatch，
+  // 又不需要在 effect 中同步 setState（会触发 react-hooks/set-state-in-effect）。
+  const [windowWidth, setWindowWidth] = useState(() => {
+    if (typeof window === 'undefined') return 1200;
+    if ((window as Window & { __PRERENDER_INJECTED?: unknown }).__PRERENDER_INJECTED) {
+      return 1200;
+    }
+    return window.innerWidth;
+  });
   const { i18n } = useTranslation();
   const [config, setConfig] = useState<FrontendConfig | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
@@ -54,7 +64,7 @@ const Home: React.FC = () => {
   });
   const [filters, setFilters] = useState<FilterValues>({});
   const [sorter, setSorter] = useState<SorterState>({});
-  
+
   const isSmallScreen = windowWidth < 1200;
 
   useEffect(() => {

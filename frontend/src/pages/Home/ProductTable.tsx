@@ -20,7 +20,16 @@ interface ProductTableProps {
 
 const ProductTable: React.FC<ProductTableProps> = ({ data, loading, pagination, onChange }) => {
   const { t } = useTranslation();
-  const [isMobile, setIsMobile] = React.useState(window.innerWidth < 768);
+  // 初始值在 lazy initializer 中计算：仅在非预渲染环境下读取真实 innerWidth，
+  // 预渲染（vite-plugin-prerender 注入 __PRERENDER_INJECTED）时使用桌面默认，
+  // 避免 hydration mismatch 且不触发 set-state-in-effect。
+  const [isMobile, setIsMobile] = React.useState(() => {
+    if (typeof window === 'undefined') return false;
+    if ((window as Window & { __PRERENDER_INJECTED?: unknown }).__PRERENDER_INJECTED) {
+      return false;
+    }
+    return window.innerWidth < 768;
+  });
 
   React.useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);

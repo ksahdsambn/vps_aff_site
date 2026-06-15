@@ -82,12 +82,18 @@ export interface ProductListQuery {
 
 /**
  * 后台产品列表查询参数
+ *
+ * 注意：Express 的 req.query 恒为字符串/字符串数组，运行时不会是真正的
+ * number/boolean。这里保留 TS 类型以便阅读，但 controller 中需对 isDeleted
+ * / page / pageSize 等显式做字符串解析。
  */
 export interface AdminProductListQuery {
   keyword?: string;        // 搜索关键词（匹配 provider 或 name）
   page?: number;           // 页码，默认 1
   pageSize?: number;       // 每页数量，默认 20
-  isDeleted?: boolean;     // 是否包含已删除
+  // Express query 恒为字符串；类型标注为联合类型以反映运行时真实情况，
+  // 避免 controller 中的字符串比较被 TS 误判为无意义比较。
+  isDeleted?: boolean | string;     // 传 "true" 仅查已删除，未传则默认查未删除
 }
 
 /**

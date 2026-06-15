@@ -5,6 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.auth = auth;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
+const secrets_1 = require("../utils/secrets");
 /**
  * JWT 认证中间件
  * 从 Authorization: Bearer <token> 提取并验证 Token
@@ -22,8 +23,7 @@ function auth(req, res, next) {
     }
     const token = authHeader.substring(7); // 去掉 "Bearer " 前缀
     try {
-        const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
-        const decoded = jsonwebtoken_1.default.verify(token, JWT_SECRET);
+        const decoded = jsonwebtoken_1.default.verify(token, (0, secrets_1.getJwtSecret)());
         req.admin = {
             adminId: decoded.adminId,
             username: decoded.username,

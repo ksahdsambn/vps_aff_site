@@ -2,19 +2,9 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getProducts = getProducts;
 exports.getProviders = getProviders;
-const client_1 = require("../generated/prisma/client");
-const adapter_mariadb_1 = require("@prisma/adapter-mariadb");
+const db_1 = require("../utils/db");
 const response_1 = require("../utils/response");
 const types_1 = require("../types");
-const adapter = new adapter_mariadb_1.PrismaMariaDb({
-    host: process.env.DATABASE_HOST || 'localhost',
-    user: process.env.DATABASE_USER || 'root',
-    password: process.env.DATABASE_PASSWORD || 'password',
-    database: process.env.DATABASE_NAME || 'vps_aff_db',
-    port: parseInt(process.env.DATABASE_PORT || '3306', 10),
-    connectionLimit: 10,
-});
-const prisma = new client_1.PrismaClient({ adapter });
 const ALLOWED_SORT_FIELDS = ['cpu', 'memory', 'disk', 'monthlyTraffic', 'bandwidth', 'price'];
 function normalizeQueryText(value) {
     if (typeof value !== 'string') {
@@ -54,8 +44,8 @@ async function getProducts(req, res, _next) {
             orderBy = { [sortField]: sortOrder };
         }
         const [total, list] = await Promise.all([
-            prisma.product.count({ where }),
-            prisma.product.findMany({
+            db_1.prisma.product.count({ where }),
+            db_1.prisma.product.findMany({
                 where,
                 skip,
                 take: pageSize,
@@ -76,7 +66,7 @@ async function getProducts(req, res, _next) {
 }
 async function getProviders(_req, res, _next) {
     try {
-        const products = await prisma.product.findMany({
+        const products = await db_1.prisma.product.findMany({
             where: { isDeleted: false },
             select: { provider: true },
             distinct: ['provider'],

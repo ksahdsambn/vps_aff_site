@@ -12,19 +12,21 @@ exports.getAdminConfig = getAdminConfig;
 exports.updateConfig = updateConfig;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
-const client_1 = require("../generated/prisma/client");
-const adapter_mariadb_1 = require("@prisma/adapter-mariadb");
+const db_1 = require("../utils/db");
 const response_1 = require("../utils/response");
+const secrets_1 = require("../utils/secrets");
 const types_1 = require("../types");
-const adapter = new adapter_mariadb_1.PrismaMariaDb({
-    host: process.env.DATABASE_HOST || 'localhost',
-    user: process.env.DATABASE_USER || 'root',
-    password: process.env.DATABASE_PASSWORD || 'password',
-    database: process.env.DATABASE_NAME || 'vps_aff_db',
-    port: parseInt(process.env.DATABASE_PORT || '3306', 10),
-    connectionLimit: 10,
-});
-const prisma = new client_1.PrismaClient({ adapter });
+/**
+ * 用于抹平登录时序侧信道的占位 bcrypt hash。
+ *
+ * 当用户名不存在时，原始实现会立即返回（不执行 bcrypt.compare），
+ * 而存在用户名时则要跑一次 ~100ms 的 bcrypt 比较 —— 攻击者可据此
+ * 通过响应耗时枚举出有效用户名。
+ *
+ * 这里在模块加载时预生成一个 dummy hash，用户不存在时也执行一次
+ * bcrypt.compare，使两条分支耗时接近一致。
+ */
+const DUMMY_PASSWORD_HASH = bcryptjs_1.default.hashSync('__nonexistent_user_placeholder__', 10);
 function normalizeRequiredString(value) {
     return typeof value === 'string' ? value.trim() : '';
 }
@@ -97,10 +99,12 @@ async function login(req, res, _next) {
             (0, response_1.errorResponse)(res, types_1.ERROR_CODES.BAD_REQUEST, 'Username and password are required', 400);
             return;
         }
-        const admin = await prisma.admin.findUnique({
+        const admin = await db_1.prisma.admin.findUnique({
             where: { username },
         });
         if (!admin) {
+            // 用户名不存在时也执行一次 bcrypt 比较，抹平响应时序，防止用户名枚举。
+            await bcryptjs_1.default.compare(password, DUMMY_PASSWORD_HASH);
             (0, response_1.errorResponse)(res, types_1.ERROR_CODES.LOGIN_FAILED, 'Invalid username or password', 401);
             return;
         }
@@ -109,9 +113,8 @@ async function login(req, res, _next) {
             (0, response_1.errorResponse)(res, types_1.ERROR_CODES.LOGIN_FAILED, 'Invalid username or password', 401);
             return;
         }
-        const jwtSecret = process.env.JWT_SECRET || 'default_jwt_secret';
-        const token = jsonwebtoken_1.default.sign({ adminId: admin.id, username: admin.username }, jwtSecret, { expiresIn: '30m' });
-        await prisma.admin.update({
+        const token = jsonwebtoken_1.default.sign({ adminId: admin.id, username: admin.username }, (0, secrets_1.getJwtSecret)(), { expiresIn: '30m' });
+        await db_1.prisma.admin.update({
             where: { id: admin.id },
             data: { lastLoginAt: new Date() },
         });
@@ -171,7 +174,7 @@ async function addProduct(req, res, _next) {
             (0, response_1.errorResponse)(res, types_1.ERROR_CODES.BAD_REQUEST, bandwidth.error, 400);
             return;
         }
-        const product = await prisma.product.create({
+        const product = await db_1.prisma.product.create({
             data: {
                 provider,
                 name,
@@ -202,7 +205,7 @@ async function updateProduct(req, res, _next) {
             (0, response_1.errorResponse)(res, types_1.ERROR_CODES.BAD_REQUEST, 'Invalid product id', 400);
             return;
         }
-        const existing = await prisma.product.findFirst({
+        const existing = await db_1.prisma.product.findFirst({
             where: { id, isDeleted: false },
         });
         if (!existing) {
@@ -309,7 +312,7 @@ async function updateProduct(req, res, _next) {
             (0, response_1.errorResponse)(res, types_1.ERROR_CODES.BAD_REQUEST, 'No valid fields were provided for update', 400);
             return;
         }
-        const product = await prisma.product.update({
+        const product = await db_1.prisma.product.update({
             where: { id },
             data: updateData,
         });
@@ -327,14 +330,14 @@ async function deleteProduct(req, res, _next) {
             (0, response_1.errorResponse)(res, types_1.ERROR_CODES.BAD_REQUEST, 'Invalid product id', 400);
             return;
         }
-        const existing = await prisma.product.findUnique({
+        const existing = await db_1.prisma.product.findUnique({
             where: { id },
         });
         if (!existing) {
             (0, response_1.errorResponse)(res, types_1.ERROR_CODES.PRODUCT_NOT_FOUND, 'Product not found', 404);
             return;
         }
-        await prisma.product.update({
+        await db_1.prisma.product.update({
             where: { id },
             data: { isDeleted: true },
         });
@@ -361,12 +364,16 @@ async function getAdminProducts(req, res, _next) {
                 { name: { contains: keyword } },
             ];
         }
-        if (query.isDeleted !== undefined) {
-            where.isDeleted = query.isDeleted === true || query.isDeleted === 'true';
-        }
+        // Express query 参数恒为字符串（或字符串数组），而类型标注为 boolean。
+        // 显式按字符串解析，避免布尔比较恒为 false 的隐式 bug。
+        const isDeletedParam = query.isDeleted;
+        const isDeleted = isDeletedParam === undefined
+            ? false
+            : (isDeletedParam === true || isDeletedParam === 'true');
+        where.isDeleted = isDeleted;
         const [total, list] = await Promise.all([
-            prisma.product.count({ where }),
-            prisma.product.findMany({
+            db_1.prisma.product.count({ where }),
+            db_1.prisma.product.findMany({
                 where,
                 skip,
                 take: pageSize,
@@ -387,7 +394,7 @@ async function getAdminProducts(req, res, _next) {
 }
 async function getAdminConfig(req, res, _next) {
     try {
-        const configs = await prisma.systemConfig.findMany({
+        const configs = await db_1.prisma.systemConfig.findMany({
             orderBy: { id: 'asc' },
         });
         (0, response_1.successResponse)(res, configs);
@@ -405,7 +412,7 @@ async function updateConfig(req, res, _next) {
             (0, response_1.errorResponse)(res, types_1.ERROR_CODES.BAD_REQUEST, 'configKey is required', 400);
             return;
         }
-        const existing = await prisma.systemConfig.findUnique({
+        const existing = await db_1.prisma.systemConfig.findUnique({
             where: { configKey: normalizedConfigKey },
         });
         if (!existing) {
@@ -413,7 +420,7 @@ async function updateConfig(req, res, _next) {
             return;
         }
         try {
-            const updated = await prisma.systemConfig.update({
+            const updated = await db_1.prisma.systemConfig.update({
                 where: { configKey: normalizedConfigKey },
                 data: { configValue: normalizeOptionalString(configValue) ?? '' },
             });
