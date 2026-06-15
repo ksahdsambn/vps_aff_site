@@ -226,3 +226,37 @@
 - 在检测为预渲染环境下，直接吃掉 API 错误消息，禁止弹出 Toast 冒泡进入快照。
 - 同步修改了 Dockerfile 的 Alpine 底层，注入 Chromium 的环境依赖，使得带有无头检测的预渲染得以安全稳定跑通。
 **验证结果**: 重新在 Docker 内执行 build 后，`http://localhost/` 已验证无此错误悬浮窗。
+
+## 2026-06-15 (修复 1Panel 计划任务自动更新失败)
+
+**问题描述**: 1Panel 计划任务 `vps_aff_site_auto_update` 无法从 GitHub 拉取更新，报错 `Missing .git in /opt/1panel/task/shell`，重试 3 次均失败。
+
+**问题分析**: 经 SSH 排查服务器 `185.255.113.121`，发现 3 个叠加问题：
+
+1. **PROJECT_DIR 计算错误**: 1Panel 将任务脚本放在 `/opt/1panel/task/shell/vps_aff_site_auto_update/`，脚本通过 `SCRIPT_DIR/..` 计算 `PROJECT_DIR` 得到 `/opt/1panel/task/shell`（无 `.git`），而非实际项目路径 `/root/vps_aff_site`。
+2. **前端端口冲突**: 服务器 80 端口被 1Panel 自带的 OpenResty 占用，仓库 `docker-compose.yml` 写死 `"80:80"`，`git reset --hard` 会覆盖服务器手动改的 `8080:80`。
+3. **ADMIN_PASSWORD 缺失**: 新代码 (`12d946a`) 要求生产环境必须设置 `ADMIN_PASSWORD` 环境变量（见 `backend/src/utils/secrets.ts`），但服务器 `.env` 未配置，导致后端容器启动即崩溃 (`seedRuntime` 退出码 1)。
+
+**修复措施**:
+
+| 问题 | 修复 |
+|------|------|
+| PROJECT_DIR 错误 | `scripts/update-from-github.sh`: `PROJECT_DIR` 改为 `${PROJECT_DIR:-...}` 支持环境变量覆盖；服务器任务脚本硬编码 `PROJECT_DIR="${PROJECT_DIR:-/root/vps_aff_site}"` |
+| 端口冲突 | `docker-compose.yml`: `"80:80"` → `"${FRONTEND_PORT:-80}:80"`；服务器 `.env` 添加 `FRONTEND_PORT=8080`（`.env` 会被脚本备份恢复，不会因 reset 丢失） |
+| ADMIN_PASSWORD 缺失 | 服务器 `.env` 添加 `ADMIN_PASSWORD=pDkj&Gr%WHp2g4@pZ@^o&^b`（commit `4647b90` 中硬编码的密码） |
+
+**修改文件清单**:
+| 文件 | 操作 |
+|------|------|
+| `docker-compose.yml` | 前端端口改为 `${FRONTEND_PORT:-80}:80` |
+| `scripts/update-from-github.sh` | `PROJECT_DIR` 支持 env 覆盖 |
+| `.env.example` | 新增 `FRONTEND_PORT` 文档 |
+| 服务器 `.env` | 新增 `FRONTEND_PORT=8080`、`ADMIN_PASSWORD=...` |
+| 服务器 1Panel 任务脚本 | `PROJECT_DIR` 默认指向 `/root/vps_aff_site` |
+
+**验证结果**:
+- Git commit `bd8349d` 已推送到 GitHub
+- 计划任务手动执行成功，拉取最新代码并重建容器
+- 三个容器全部运行: backend (Up)、db (healthy)、frontend (Up, `0.0.0.0:8080->80/tcp`)
+- HTTP 检查: frontend `200`、backend API `200`
+- 后端日志: `Runtime seed completed successfully` + `Server running on port 3000`
