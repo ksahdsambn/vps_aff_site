@@ -88,7 +88,7 @@ export default function AdminProductsPage() {
         setData(result.list);
         setTotal(result.total);
       } catch (error) {
-        if (!cancelled) message.error(getApiErrorMessage(error) || "Failed to load products");
+        if (!cancelled) message.error(getApiErrorMessage(error) || "Couldn't load products. Please refresh the page.");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -155,14 +155,14 @@ export default function AdminProductsPage() {
   const handleDelete = async (id: number) => {
     try {
       await adminDeleteProduct(id);
-      message.success("Product deleted");
+      message.success("Product deleted.");
       if (data.length === 1 && page > 1) {
         setPage((c) => c - 1);
       } else {
         refreshCurrentPage();
       }
     } catch (error) {
-      message.error(getApiErrorMessage(error) || "Delete request failed");
+      message.error(getApiErrorMessage(error) || "Couldn't delete the product. Please try again.");
     }
   };
 
@@ -217,7 +217,7 @@ export default function AdminProductsPage() {
         }
 
         await adminUpdateProduct(editingId, payload);
-        message.success("Product updated");
+        message.success("Product updated.");
         setIsModalVisible(false);
         refreshCurrentPage();
         return;
@@ -240,12 +240,12 @@ export default function AdminProductsPage() {
       };
 
       await adminAddProduct(payload);
-      message.success("Product created");
+      message.success("Product created.");
       setIsModalVisible(false);
       setPage(1);
       refreshCurrentPage();
     } catch (error) {
-      message.error(getApiErrorMessage(error) || "Save failed");
+      message.error(getApiErrorMessage(error) || "Couldn't save the product. Please try again.");
     }
   };
 
@@ -272,7 +272,7 @@ export default function AdminProductsPage() {
           <Button type="link" icon={<EditOutlined />} onClick={() => showEditModal(record)}>
             Edit
           </Button>
-          <Popconfirm title="Delete this product?" onConfirm={() => handleDelete(record.id)}>
+          <Popconfirm title="Delete this product?" description="This can't be undone." okText="Delete" okButtonProps={{ danger: true }} cancelText="Cancel" onConfirm={() => handleDelete(record.id)}>
             <Button type="link" danger icon={<DeleteOutlined />}>
               Delete
             </Button>
@@ -351,7 +351,7 @@ export default function AdminProductsPage() {
             <Form.Item
               label="Monthly traffic"
               required
-              tooltip="后台统一按 GB 存储。编辑时数值会以原始值显示，请确认单位后再修改；不改动该字段不会被覆盖。"
+              tooltip="Stored in GB. When editing, the value shows as originally entered — check the unit before changing. Leave it untouched to keep the current value."
             >
               <Input.Group compact>
                 <Form.Item name="monthlyTrafficValue" noStyle rules={[{ required: true }]}>
@@ -369,7 +369,7 @@ export default function AdminProductsPage() {
             <Form.Item
               label="Bandwidth"
               required
-              tooltip="后台统一按 Mbps 存储。编辑时数值会以原始值显示，请确认单位后再修改；不改动该字段不会被覆盖。"
+              tooltip="Stored in Mbps. When editing, the value shows as originally entered — check the unit before changing. Leave it untouched to keep the current value."
             >
               <Input.Group compact>
                 <Form.Item name="bandwidthValue" noStyle rules={[{ required: true }]}>
@@ -397,15 +397,15 @@ export default function AdminProductsPage() {
           </Space>
 
           <Form.Item name="affiliateUrl" label="Affiliate URL" rules={[{ required: true, type: "url" }]}>
-            <Input />
+            <Input placeholder="https://provider.com/order?aff=..." />
           </Form.Item>
 
           <Form.Item name="reviewUrl" label="Review URL" rules={[{ type: "url" }]}>
-            <Input />
+            <Input placeholder="https://yourblog.com/review/..." />
           </Form.Item>
 
           <Form.Item name="remark" label="Remark">
-            <Input.TextArea />
+            <Input.TextArea placeholder="Optional notes shown to users (e.g. limited stock, promo code)" />
           </Form.Item>
         </Form>
       </Modal>

@@ -238,7 +238,7 @@ export async function getAdminApi() {
             window.location.href = "/admin/login";
           }
         }
-        return Promise.reject(new Error("未授权"));
+        return Promise.reject(new Error("Session expired. Please sign in again."));
       }
       return response;
     },
@@ -263,7 +263,7 @@ export function getApiErrorMessage(err: unknown): string {
     if (resp?.data?.message) return resp.data.message;
   }
   if (err instanceof Error) return err.message;
-  return "未知错误";
+  return "An unexpected error occurred. Please try again.";
 }
 
 /** 获取 API 业务状态码。 */

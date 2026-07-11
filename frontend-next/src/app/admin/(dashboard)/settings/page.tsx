@@ -30,7 +30,7 @@ export default function AdminSettingsPage() {
         });
         form.setFieldsValue(initialValues);
       } catch (error) {
-        if (!cancelled) message.error(getApiErrorMessage(error) || "Failed to load settings");
+        if (!cancelled) message.error(getApiErrorMessage(error) || "Couldn't load the settings. Please refresh the page.");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -47,9 +47,9 @@ export default function AdminSettingsPage() {
       await Promise.all(
         Object.entries(values).map(([key, value]) => adminUpdateConfig(key, value || ""))
       );
-      message.success("Settings saved");
+      message.success("Settings saved.");
     } catch (error) {
-      message.error(getApiErrorMessage(error) || "Failed to save settings");
+      message.error(getApiErrorMessage(error) || "Couldn't save the settings. Please try again.");
     } finally {
       setSaving(false);
     }

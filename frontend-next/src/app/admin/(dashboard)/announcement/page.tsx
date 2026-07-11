@@ -33,7 +33,7 @@ export default function AdminAnnouncementPage() {
         setZhContent(zh?.configValue || "");
         setEnContent(en?.configValue || "");
       } catch (error) {
-        if (!cancelled) message.error(getApiErrorMessage(error) || "Failed to load announcements");
+        if (!cancelled) message.error(getApiErrorMessage(error) || "Couldn't load the announcements. Please refresh the page.");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -52,9 +52,9 @@ export default function AdminAnnouncementPage() {
     setSaving(true);
     try {
       await adminUpdateConfig(key, value);
-      message.success("Saved");
+      message.success("Saved.");
     } catch (error) {
-      message.error(getApiErrorMessage(error) || "Save request failed");
+      message.error(getApiErrorMessage(error) || "Couldn't save. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -73,7 +73,7 @@ export default function AdminAnnouncementPage() {
           value={content}
           onChange={(event) => setContent(event.target.value)}
           rows={20}
-          placeholder="Write Markdown content here..."
+          placeholder="Write your announcement here. Markdown is supported."
           style={{ fontFamily: "monospace" }}
         />
         <Button type="primary" onClick={saveHandler} loading={saving} style={{ marginTop: 16 }}>
@@ -94,7 +94,7 @@ export default function AdminAnnouncementPage() {
           {content ? (
             <ReactMarkdown {...markdownOptions}>{content}</ReactMarkdown>
           ) : (
-            <div style={{ color: "var(--muted)" }}>No announcement content</div>
+            <div style={{ color: "var(--muted)" }}>Nothing to preview yet. Start writing on the left.</div>
           )}
         </div>
       </Col>

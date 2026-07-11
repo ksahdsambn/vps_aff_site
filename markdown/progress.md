@@ -1374,3 +1374,56 @@ products/announcement/settings：清扫内联中性 hex（`#f0f0f0`/`#fffbe6`/`#
   home/ProductDetailContent、home/ProductSkeleton、home/ProviderProductsTable、home/HomeClient
 - 页面：[locale]/page、[locale]/providers/[name]/page、[locale]/privacy/page、not-found、[locale]/not-found
 - Admin：admin/AdminShell、admin/layout、admin/login/page、(dashboard) announcement、(dashboard) settings
+
+---
+
+## UX 文案清晰度优化（clarify 技能，2026-07-12）
+
+### 背景
+
+使用 `clarify` 技能系统审查全部用户可见文案（按钮、提示、错误信息、空状态、确认对话框、表单标签），
+按清晰度原则优化：具体而非含糊、主动语态、口语化、含修复建议、不责备用户。
+
+### i18n 文案优化（`en.json` + `zh.json` 对称）
+
+| 区域 | 改前 | 改后 | 原则 |
+|------|------|------|------|
+| 筛选占位符 | "Select providers" / "请选择服务商" | "All providers" / "全部服务商" | 下拉框语义 |
+| 空状态 | "No data available" / "暂无数据" | "No products match your filters. Try adjusting or clearing them." | 说明原因 + 给出下一步，非死胡同 |
+| 价格排序提示 | "Sorted by value only, for reference" | 完整说明跨币种排序仅供参考 | 消除歧义 |
+| 下单按钮 | `order`（小写） | `Order` | 与详情页 "Order Now" 一致 |
+| 删除确认 | "Are you sure you want to delete this product?" | "Delete this product? This can't be undone." | destructive action 说明后果 |
+| 错误信息 | "Operation failed" / "Failed to save..." | "Something went wrong..." / "Couldn't save... Please try again." | 口语 + 动作建议 |
+| 网络错误 | "Network connection failed, please check..." | "Couldn't reach the server. Please check your internet connection and try again." | 明确问题 |
+| 加载态 | "Loading..." | "Loading…" | 规范省略号字符 |
+| 句末标点 | "Product added successfully" | "Product added." | 统一句号 |
+| 破折号 | `-`（ASCII） | `—`（em dash） | en/zh 一致 |
+
+### 后台硬编码文案修复（真实 Bug）
+
+1. **语言不匹配 Bug**：产品表单两个 tooltip 原为中文（"后台统一按 GB 存储..."），但整个表单为英文界面。已译为英文，上下文一致。
+2. **api.ts 混语**：`"未授权"`、`"未知错误"` 出现在英文后台错误流中。已改英文。
+3. **删除确认**：Popconfirm 增加 "This can't be undone." 提示 + 红色危险确认按钮 + 明确 "Delete"/"Cancel" 按钮文字。
+4. **空预览态**：公告页 "No announcement content" → "Nothing to preview yet. Start writing on the left."（指向明确）。
+5. **表单占位符**：给 Affiliate URL、Review URL、Remark 字段加示例占位符（`https://provider.com/order?aff=...`），降低填写门槛。
+6. **toast 统一**：成功/错误 toast 统一句末标点与自然语气。
+
+### 验证结果
+
+- `npx tsc --noEmit`（frontend-next）：✅ 0 错误
+- JSON 校验（en.json + zh.json）：✅ 有效
+- AntD 6.5.0 `Popconfirm` 新 props（`description`/`okButtonProps`）：✅ 支持
+- 字符串值依赖检查：`orderButton` 无字面值比较，纯展示改动，安全
+- 改动范围：7 文件，+93/-93 行，零逻辑改动
+
+### 修改文件清单
+
+| 文件 | 改动 |
+|------|------|
+| `frontend-next/src/messages/en.json` | i18n 英文文案全面优化 |
+| `frontend-next/src/messages/zh.json` | i18n 中文文案对称优化 |
+| `frontend-next/src/app/admin/(dashboard)/products/page.tsx` | 删除确认后果、中文 tooltip 译英、错误/成功 toast、表单占位符 |
+| `frontend-next/src/app/admin/(dashboard)/announcement/page.tsx` | 错误/成功 toast、空预览态、占位符 |
+| `frontend-next/src/app/admin/(dashboard)/settings/page.tsx` | 错误/成功 toast |
+| `frontend-next/src/app/admin/login/page.tsx` | 登录成功/错误 toast、表单验证消息 |
+| `frontend-next/src/lib/api.ts` | 中文字符串改英文（`未授权`/`未知错误`） |

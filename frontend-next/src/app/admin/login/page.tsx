@@ -29,10 +29,10 @@ export default function LoginPage() {
     try {
       const { token } = await adminLogin(values.username, values.password);
       localStorage.setItem("token", token);
-      message.success("Login successful");
+      message.success("Signed in.");
       router.push("/admin/products");
     } catch (error: unknown) {
-      message.error(getApiErrorMessage(error) || "Login request failed");
+      message.error(getApiErrorMessage(error) || "Couldn't sign in. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -49,14 +49,14 @@ export default function LoginPage() {
         <Form name="admin_login" onFinish={onFinish} layout="vertical" size="large">
           <Form.Item
             name="username"
-            rules={[{ required: true, message: "Please enter your username" }]}
+            rules={[{ required: true, message: "Please enter your username." }]}
           >
             <Input prefix={<UserOutlined />} placeholder="Username" />
           </Form.Item>
 
           <Form.Item
             name="password"
-            rules={[{ required: true, message: "Please enter your password" }]}
+            rules={[{ required: true, message: "Please enter your password." }]}
           >
             <Input.Password prefix={<LockOutlined />} placeholder="Password" />
           </Form.Item>
