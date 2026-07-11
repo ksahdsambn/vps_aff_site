@@ -1,0 +1,32 @@
+.guide {
+  margin: clamp(18px, 3vw, 34px) clamp(16px, 4vw, 48px) 0;
+  padding: clamp(20px, 3vw, 32px);
+  background: color-mix(in srgb, var(--surface) 94%, var(--accent-soft));
+  border: 1px solid var(--rule);
+  border-radius: var(--r-container);
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(420px, 1.2fr);
+  gap: 26px 42px;
+}
+.intro :global(.eyebrow) { margin: 0 0 9px; }
+.intro h2 { margin: 0; font-size: clamp(1.45rem, 2.2vw, 2rem); }
+.lede { max-width: 39rem; margin: 11px 0 0; color: var(--text); line-height: 1.65; }
+.steps { display: flex; flex-wrap: wrap; gap: 8px 16px; padding: 0; margin: 18px 0 0; list-style: none; }
+.step { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-size: 0.82rem; }
+.stepNumber { width: 19px; height: 19px; display: inline-grid; place-items: center; color: var(--accent); background: var(--accent-soft); border-radius: 50%; font-size: 0.7rem; font-weight: 700; }
+.options { display: grid; gap: 1px; align-self: start; overflow: hidden; background: var(--rule); border: 1px solid var(--rule); border-radius: var(--r-card); }
+.option { width: 100%; display: flex; align-items: center; gap: 13px; padding: 14px 16px; border: 0; text-align: left; color: var(--text); background: var(--surface); cursor: pointer; font: inherit; transition: background-color var(--dur) var(--ease-out), color var(--dur) var(--ease-out); }
+.option:hover, .option:focus-visible, .optionSelected { color: var(--ink); background: var(--accent-soft); outline: none; }
+.option:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); }
+.optionIcon { width: 29px; height: 29px; display: grid; flex: 0 0 auto; place-items: center; color: var(--accent); background: color-mix(in srgb, var(--accent-soft) 72%, var(--surface)); border-radius: 50%; }
+.optionContent { display: grid; gap: 2px; min-width: 0; }
+.optionContent strong { color: inherit; font-size: 0.92rem; }
+.optionContent span { color: var(--muted); font-size: 0.78rem; line-height: 1.4; }
+.arrow, .selectedIcon { margin-left: auto; flex: 0 0 auto; color: var(--accent); }
+.footer { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; gap: 16px; padding-top: 2px; color: var(--muted); font-size: 0.78rem; }
+.skip { padding: 0 !important; color: var(--muted) !important; font-size: inherit !important; }
+.reopenWrap { display: flex; justify-content: flex-end; max-width: 1400px; margin: 15px auto -4px; padding: 0 24px; }
+.reopen { display: inline-flex; align-items: center; gap: 7px; padding: 5px 0; color: var(--muted); border: 0; background: transparent; cursor: pointer; font: inherit; font-size: 0.78rem; }
+.reopen:hover, .reopen:focus-visible { color: var(--accent); outline: none; }
+@media (max-width: 900px) { .guide { grid-template-columns: 1fr; gap: 22px; } }
+@media (max-width: 768px) { .guide { margin: 16px; padding: 20px; } .footer { align-items: flex-start; flex-direction: column; gap: 7px; } .reopenWrap { margin: 10px auto -8px; padding: 0 16px; } }

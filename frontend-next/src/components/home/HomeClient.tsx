@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
 import { message } from "antd";
 import type { TableProps } from "antd";
@@ -8,6 +8,7 @@ import FilterBar, { type FilterValues } from "@/components/FilterBar";
 import ProductTable from "./ProductTable";
 import ProductCardList from "./ProductCard";
 import ProductSkeleton from "./ProductSkeleton";
+import GettingStarted, { type OnboardingPreset } from "./GettingStarted";
 import {
   getProducts,
   getApiErrorMessage,
@@ -25,6 +26,11 @@ interface SorterState {
   field?: string;
   order?: "asc" | "desc";
 }
+
+const subscribeToViewport = (callback: () => void) => {
+  window.addEventListener("resize", callback);
+  return () => window.removeEventListener("resize", callback);
+};
 
 interface HomeClientProps {
   /** 服务端 SSG 预取的初始产品数据（首帧内容，爬虫可见）。 */
@@ -48,7 +54,11 @@ const HomeClient: React.FC<HomeClientProps> = ({
   locale,
 }) => {
   const { t } = useTranslation();
-  const [windowWidth, setWindowWidth] = useState(1200);
+  const windowWidth = useSyncExternalStore(
+    subscribeToViewport,
+    () => window.innerWidth,
+    () => 1200
+  );
   // 首帧用 SSG 预取数据，loading=false（消除骨架屏闪烁）
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [loading, setLoading] = useState(false);
@@ -61,13 +71,6 @@ const HomeClient: React.FC<HomeClientProps> = ({
   const [sorter, setSorter] = useState<SorterState>({});
 
   const isSmallScreen = windowWidth < 1200;
-
-  useEffect(() => {
-    setWindowWidth(window.innerWidth);
-    const handleResize = () => setWindowWidth(window.innerWidth);
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
 
   const loadProducts = useCallback(
     async (cancelled: { current: boolean }) => {
@@ -152,23 +155,40 @@ const HomeClient: React.FC<HomeClientProps> = ({
     setPagination((prev) => ({ ...prev, current: page, pageSize }));
   };
 
+  const handleOnboardingStart = (preset: OnboardingPreset) => {
+    const onboardingSort: Record<OnboardingPreset, SorterState> = {
+      value: { field: "price", order: "asc" },
+      performance: { field: "cpu", order: "desc" },
+      explore: {},
+    };
+    setFilters({});
+    setSorter(onboardingSort[preset]);
+    setPagination((prev) => ({ ...prev, current: 1 }));
+    window.setTimeout(() => {
+      document.getElementById("vps-results")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 0);
+  };
+
   // locale 仅用于骨架屏 viewMode 隔离（此处不影响渲染）
   void locale;
 
   return (
-    <section
-      aria-label={t("filter.provider")}
-      style={{
-        maxWidth: 1400,
-        margin: "0 auto",
-        position: "relative",
-        zIndex: 1,
-        padding: isSmallScreen ? "0 12px" : "0 24px",
-      }}
-    >
-      <FilterBar onFilterChange={handleFilterChange} initialProviders={initialProviders} />
+    <>
+      <GettingStarted resultCount={initialTotal} onStart={handleOnboardingStart} />
+      <section
+        id="vps-results"
+        aria-label={t("filter.provider")}
+        style={{
+          maxWidth: 1400,
+          margin: "0 auto",
+          position: "relative",
+          zIndex: 1,
+          padding: isSmallScreen ? "0 12px" : "0 24px",
+        }}
+      >
+        <FilterBar onFilterChange={handleFilterChange} initialProviders={initialProviders} />
 
-      {loading ? (
+        {loading ? (
         <ProductSkeleton viewMode={isSmallScreen ? "card" : "table"} />
       ) : isSmallScreen ? (
         <ProductCardList
@@ -185,8 +205,9 @@ const HomeClient: React.FC<HomeClientProps> = ({
           pagination={pagination}
           onChange={handleTableChange}
         />
-      )}
-    </section>
+        )}
+      </section>
+    </>
   );
 };
 

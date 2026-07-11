@@ -19,6 +19,25 @@
     "search": "Search",
     "filter": "Filter"
   },
+  "onboarding": {
+    "ariaLabel": "Getting started with VPS comparison",
+    "eyebrow": "Start with one decision",
+    "title": "Find a VPS without the guesswork",
+    "description": "Pick a starting point, then compare {{count}} live plans by the specs that matter to you.",
+    "stepGoal": "Choose a goal",
+    "stepCompare": "Compare the essentials",
+    "stepReview": "Review a plan before ordering",
+    "valueTitle": "Start with the lowest price",
+    "valueDescription": "Sort available plans from low to high.",
+    "performanceTitle": "Prioritize compute power",
+    "performanceDescription": "Bring higher-CPU plans to the top.",
+    "exploreTitle": "I know what I need",
+    "exploreDescription": "Browse first, then narrow by provider or location.",
+    "note": "You can refine provider, name, and location at any time.",
+    "skip": "Skip for now",
+    "reopen": "Need a quick starting point?",
+    "selected": "Selected"
+  },
   "table": {
     "provider": "Provider",
     "name": "Product Name",

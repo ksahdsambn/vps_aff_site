@@ -19,6 +19,25 @@
     "search": "搜索",
     "filter": "筛选"
   },
+  "onboarding": {
+    "ariaLabel": "VPS 比较快速上手",
+    "eyebrow": "先确定一个目标",
+    "title": "三步找到适合你的 VPS",
+    "description": "选择一个起点，再从 {{count}} 个实时套餐中按关键规格比较。",
+    "stepGoal": "选定目标",
+    "stepCompare": "比较关键规格",
+    "stepReview": "下单前查看套餐",
+    "valueTitle": "优先看低价套餐",
+    "valueDescription": "将可选套餐按价格从低到高排列。",
+    "performanceTitle": "优先看计算性能",
+    "performanceDescription": "把 CPU 更高的套餐排到前面。",
+    "exploreTitle": "我已经知道需求",
+    "exploreDescription": "先自由浏览，再按服务商或位置筛选。",
+    "note": "随时可以按服务商、产品名或位置进一步筛选。",
+    "skip": "暂时跳过",
+    "reopen": "需要一个快速起点？",
+    "selected": "已选择"
+  },
   "table": {
     "provider": "服务商",
     "name": "产品名称",
