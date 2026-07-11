@@ -552,3 +552,456 @@
   - `/zh/privacy` → 200（"隐私政策" + "返回首页"），`/en/privacy` → 200（"Privacy Policy"）。
   - 回归：`/zh`、`/en`、`/zh/products/48`、`/zh/providers/DMIT`、`/admin/login` 均 200。
   - 产品数据正常（DMIT），JSON-LD 正常（schema.org），sitemap 10 URL。
+
+---
+
+## 第三轮：安全审查与漏洞修复（13 项）
+
+- **状态**：✅ 全部完成
+- **AI 模型**：ZCode (builtin:bigmodel-coding-plan/GLM-5.2)
+- **开始时间**：2026-07-11
+- **执行原则**：按阶段顺序（A→B→C→D→E→F），不跳步、不并行；任一阶段测试未通过不进入下一阶段。
+
+### 阶段执行状态总览
+
+| 阶段 | 修复编号 | 名称 | 状态 | 放行 |
+|---|---|---|---|---|
+| A | #1 #6 #7 | CORS 通配符 + JSON body 限制 + trust proxy | ✅ 完成 | ✅ 放行 |
+| B | #2 #3 | 配置白名单 + URL 协议校验 | ✅ 完成 | ✅ 放行 |
+| C | #4 #9 | expiresIn 类型契约 + dummy hash 同步阻塞 | ✅ 完成 | ✅ 放行 |
+| D | #11 | AuthGuard 自动登出 + 前端类型适配 | ✅ 完成 | ✅ 放行 |
+| E | #5 #8 #10 #12 #13 | async 兜底 + 软删除语义 + env 一致性 + validateNumberField 语义 | ✅ 完成 | ✅ 放行 |
+| F | — | 更新 progress.md + architecture.md | ✅ 完成 | ✅ 放行 |
+
+---
+
+### 阶段 A：CORS 通配符 + JSON body 限制 + trust proxy（#1 #6 #7）
+
+- **状态**：✅ 完成
+- **AI 模型**：ZCode (GLM-5.2)
+
+#### 本阶段完成内容
+1. **#1 CORS 通配符 + credentials**：`app.ts` 移除 `allowAnyOrigin` 逻辑。生产环境 `CORS_ORIGIN=*` 直接抛错拒绝启动；开发环境 `*` 降级为 localhost 白名单。origin 回调仅放行同源（无 Origin 头）或白名单内来源，不再对任意来源返回 `true`。
+2. **#6 JSON body 限制**：`express.json({ limit })` 从 `10mb` 降至 `1mb`，防止大 body DoS。
+3. **#7 trust proxy**：从硬编码 `app.set('trust proxy', 1)` 改为 `TRUST_PROXY_HOPS` 环境变量可配置（默认 1），适配多层代理部署（如 Cloudflare→nginx→容器 = 3）。
+4. 更新 `backend/.env`（CORS_ORIGIN 改显式白名单 + 新增 TRUST_PROXY_HOPS）、`.env.example`（新增说明）。
+
+#### 测试结果
+- `npx tsc --noEmit`：✅ 通过。
+- 集成测试（加载真实 app，4 项）：✅ 全通过。
+  - 邪恶 origin 不返回 ACAO ✅
+  - 合法 origin 返回正确 ACAO ✅
+  - 2MB body 被拒绝（413）✅
+  - 小 body 被接受（非 413）✅
+- 生产环境 `CORS_ORIGIN=*` 启动时抛错拒绝 ✅
+
+#### 是否放行
+✅ **放行**。
+
+---
+
+### 阶段 B：配置白名单 + URL 协议校验（#2 #3）
+
+- **状态**：✅ 完成
+- **AI 模型**：ZCode (GLM-5.2)
+
+#### 本阶段完成内容
+1. **#2 配置接口白名单 + URL 协议校验**：
+   - `updateConfig` 新增 `ALLOWED_CONFIG_KEYS` 白名单（9 个预定义 key），拒绝未知 key。
+   - 新增 `URL_CONFIG_KEYS` 集合（site_logo + 4 个社交链接），其值必须通过 http(s) 协议校验。
+   - URL 校验在 DB 查询之前执行，确保危险输入在任何 I/O 之前被拒绝。
+2. **#3 affiliateUrl/reviewUrl 协议校验**：
+   - `addProduct`：affiliateUrl 必须 http(s)；reviewUrl 可选但若提供必须 http(s)。
+   - `updateProduct`：同上。
+3. 新增 `backend/src/utils/validators.ts`：`isSafeHttpUrl()` / `isSafeOptionalHttpUrl()`，使用 URL 构造器解析 + 协议白名单（http/https only），拒绝 javascript:/data:/vbscript:/file:。
+
+#### 测试结果
+- `npx tsc --noEmit`：✅ 通过。
+- 验证器单元测试（15 项）：✅ 全通过。
+- Controller 集成测试（加载真实 app，8 项）：✅ 全通过。
+  - addProduct javascript: affiliateUrl → 400 ✅
+  - addProduct javascript: reviewUrl → 400 ✅
+  - addProduct https URL → 通过校验 ✅
+  - updateConfig 未知 key → 400 ✅
+  - updateConfig javascript: site_logo → 400 ✅
+  - updateConfig data: link_telegram → 400 ✅
+  - updateConfig https link_telegram → 通过 ✅
+  - updateConfig announcement 文本 → 通过 ✅
+
+#### 是否放行
+✅ **放行**。
+
+---
+
+### 阶段 C：expiresIn 类型契约 + dummy hash 同步阻塞（#4 #9）
+
+- **状态**：✅ 完成
+- **AI 模型**：ZCode (GLM-5.2)
+
+#### 本阶段完成内容
+1. **#4 expiresIn 类型契约**：
+   - 后端 `login` 返回值从字符串 `'30m'` 改为数字 `1800`（`TOKEN_EXPIRES_IN_SECONDS` 常量）。
+   - `jwt.sign()` 的 `expiresIn` 也统一使用该数字常量。
+   - 后端 `types/index.ts` 的 `LoginResponse.expiresIn` 类型 string→number。
+   - 前端 `api.ts` 已为 number 类型，无需修改。
+2. **#9 dummy hash 同步阻塞**：
+   - `DUMMY_PASSWORD_HASH` 从模块加载时 `bcrypt.hashSync(...)` 改为预生成固定 hash 常量字符串。
+   - 经 `bcrypt.compareSync` 验证：占位密码匹配、错误密码拒绝，时序防护仍有效。
+
+#### 测试结果
+- `npx tsc --noEmit`（后端+前端）：✅ 通过。
+- 运行时测试（7 项）：✅ 全通过。
+  - dummy hash 匹配占位密码 ✅
+  - dummy hash 拒绝错误密码 ✅
+  - dummy hash 为预生成常量 ✅
+  - 模块加载不被 bcrypt 阻塞（< 50ms）✅
+  - TOKEN_EXPIRES_IN_SECONDS 为数字 1800 ✅
+  - LoginResponse.expiresIn 为 number ✅
+- 全局搜索：无残留 `expiresIn: '30m'` ✅
+
+#### 是否放行
+✅ **放行**。
+
+---
+
+### 阶段 D：AuthGuard 自动登出 + 前端类型适配（#11）
+
+- **状态**：✅ 完成
+- **AI 模型**：ZCode (GLM-5.2)
+
+#### 本阶段完成内容
+1. **#11 AuthGuard 自动登出**：
+   - 新增 `setInterval` 定时器（每 30 秒），token 过期时主动清除 localStorage 并跳转登录页。
+   - `useRef` 管理 timer 引用，`useEffect` cleanup 中 `clearInterval`，防止内存泄漏。
+   - 提取 `redirectToLogin` / `checkToken` 内部函数。
+2. 前端 #4 适配：`LoginResponse.expiresIn` 已为 number，与后端一致。
+
+#### 测试结果
+- `npx tsc --noEmit`（前端）：✅ 通过。
+- Token 过期逻辑测试（9 项）：✅ 全通过。
+  - null/undefined/空 token → 过期 ✅
+  - 非 JWT 格式 → 过期 ✅
+  - 过去 exp → 过期 ✅
+  - 未来 exp → 未过期 ✅
+  - 近未来（10s）→ 未过期 ✅
+  - 无 exp → 未过期 ✅
+
+#### 是否放行
+✅ **放行**。
+
+---
+
+### 阶段 E：async 兜底 + 软删除语义 + env 一致性 + validateNumberField 语义（#5 #8 #10 #12 #13）
+
+- **状态**：✅ 完成
+- **AI 模型**：ZCode (GLM-5.2)
+
+#### 本阶段完成内容
+1. **#5 async 错误兜底**：确认 Express 5.2.1 原生支持 async rejection 转发。新增 `asyncHandler()` 包装器（`Promise.resolve(fn).catch(next)`）作纵深防御。现有 controller 已有 try/catch。
+2. **#8 软删除语义**：`deleteProduct` 新增 `isDeleted` 检查，已删除产品返回幂等消息 `"Product already deleted"`。
+3. **#10 getProducts 分页**：已确认 `Number(query.page)` 的 `NaN || 1` fallback 正确，无需修改。
+4. **#12 env 一致性**：阶段 A 已修复，验证三个 env 文件 CORS 一致无 `*`。
+5. **#13 validateNumberField 语义**：新增 JSDoc 文档说明 `{ min: 0 }`（allowZero=false）要求 `> 0`，`{ min: 0, allowZero: true }` 要求 `>= 0`。
+
+#### 测试结果
+- `npx tsc --noEmit`（后端+前端）：✅ 通过。
+- 运行时测试（10 项）：✅ 全通过。
+  - asyncHandler 正常 handler 被调用 ✅
+  - asyncHandler 抛出异常转发给 next(error) ✅
+  - validateNumberField 8 种边界用例 ✅
+
+#### 是否放行
+✅ **放行**。
+
+---
+
+### 阶段 F：更新 progress.md + architecture.md
+
+- **状态**：✅ 完成
+- **AI 模型**：ZCode (GLM-5.2)
+
+#### 本阶段完成内容
+1. `progress.md` 追加第三轮安全审查与漏洞修复完整记录（阶段 A-F）。
+2. `architecture.md` 追加第三轮安全审查修复产物表 + 各文件作用总览。
+
+#### 测试结果
+- 文档完整性检查：✅ 13 项修复全部有对应记录。
+- 代码变更文件：7 个（.env.example、app.ts、adminController.ts、errorHandler.ts、types/index.ts、validators.ts、AuthGuard.tsx）+ backend/.env（gitignored）。
+
+#### 是否放行
+✅ **放行**。全部 13 项 Bug 与安全漏洞修复完成。
+
+---
+
+### 全局验证结果（最终）
+- `npx tsc --noEmit`（backend）：✅ 通过，0 错误。
+- `npx tsc --noEmit`（frontend-next）：✅ 通过，0 错误。
+- 变更文件 7 个（+1 gitignored），新增 230 行，删除 21 行。
+- 13 项问题全部修复，每阶段测试通过后放行。
+
+---
+
+## 第四轮：深度安全审查与漏洞修复（12 项）
+
+- **状态**：✅ 全部完成
+- **AI 模型**：ZCode (builtin:bigmodel-coding-plan/GLM-5.2)
+- **时间**：2026-07-11
+- **执行原则**：严格按 12 阶段顺序执行，不跳步、不并行；任一阶段测试未通过不进入下一阶段；每阶段输出"完成内容 + 测试结果 + 是否放行"。
+
+### 阶段执行状态总览
+
+| 阶段 | 修复编号 | 名称 | 严重级别 | 状态 | 放行 |
+|---|---|---|---|---|---|
+| 1 | #1 | 服务端 JWT 失效机制 | 🔴 高危 | ✅ 完成 | ✅ 放行 |
+| 2 | #2 | trust proxy 与登录限速加固 | 🔴 高危 | ✅ 完成 | ✅ 放行 |
+| 3 | #3 | validateNumberField 显式 inclusive 语义 | 🟠 中危 | ✅ 完成 | ✅ 放行 |
+| 4 | #4 | 前端 diff 浮点比较健壮性 | 🟠 中危 | ✅ 完成 | ✅ 放行 |
+| 5 | #5 | getProductsByProvider 分页上限 | 🟠 中危 | ✅ 完成 | ✅ 放行 |
+| 6 | #6 | getAdminConfig 剥离内部字段 | 🟠 中危 | ✅ 完成 | ✅ 放行 |
+| 7 | #7 | JWT algorithm 白名单 | 🟡 低危 | ✅ 完成 | ✅ 放行 |
+| 8 | #8 | auth 中间件校验 admin 仍存在 | 🟡 低危 | ✅ 完成 | ✅ 放行 |
+| 9 | #9 | CORS !origin 处理收紧 | 🟡 低危 | ✅ 完成 | ✅ 放行 |
+| 10 | #10 | DUMMY_PASSWORD_HASH 进程唯一化 | 🟡 低危 | ✅ 完成 | ✅ 放行 |
+| 11 | #11 | 错误日志脱敏 | 🟡 低危 | ✅ 完成 | ✅ 放行 |
+| 12 | #12 | db.ts 不安全默认值 | 🟡 低危 | ✅ 完成 | ✅ 放行 |
+
+---
+
+### 阶段 1：服务端 JWT 失效机制（#1，🔴 高危）
+
+- **状态**：✅ 完成
+- **AI 模型**：ZCode (GLM-5.2)
+
+#### 本阶段完成内容
+1. `prisma/schema.prisma`：新增 `RevokedToken` 模型（jti 主键、adminId、expiresAt、revokedAt）。
+2. `prisma/migrations/20260711120000_add_revoked_token/migration.sql`：建表 SQL（主键 + adminId 索引 + expiresAt 索引）。
+3. `src/utils/tokenRevocation.ts`（新增）：`generateJti()` / `revokeToken()` / `isTokenRevoked()`，通过 `$queryRawUnsafe` 访问（不依赖重新生成 client），表不存在时优雅降级 + 轻量 GC（过期记录自动清理）。
+4. `adminController.ts`：`login` 签发 JWT 带 `jti` claim；新增 `logout` 函数（从 token 解码 jti+exp，吊销当前 token）。
+5. `middleware/auth.ts`：改为 async，签名校验后查询吊销表，已吊销 token 返回 401（"会话已失效"）。
+6. `routes/adminRoutes.ts`：注册 `POST /api/admin/logout`（auth 保护）。
+7. 前端 `api.ts`：新增 `adminLogout()`；`AdminShell.tsx`：登出先调后端吊销再清本地 token。
+
+#### 测试结果
+- 后端 `tsc --noEmit`：✅ 0 错误
+- 前端 `tsc --noEmit`：✅ 0 错误
+- 运行时测试（7 项）：✅ 全通过（generateJti 唯一性、降级行为、logout 导出、jti claim、auth async、auth 401）
+
+#### 是否放行
+✅ **放行**。
+
+---
+
+### 阶段 2：trust proxy 与登录限速加固（#2，🔴 高危）
+
+- **状态**：✅ 完成
+- **AI 模型**：ZCode (GLM-5.2)
+
+#### 本阶段完成内容
+1. `rateLimiter.ts`：新增 `getClientIp()`（私有 IP 时回退到 X-Forwarded-For 最左侧真实客户端 IP）和 `isPrivateIp()`。
+2. `globalLimiter` 使用显式 `keyGenerator`。
+3. `loginLimiter` 改为 **IP + username 组合计数**——即使 IP 被伪造，同一用户名爆破仍受限；不同用户名独立计数，NAT 下不误伤。
+4. `app.ts`：trust proxy 加生产环境诊断日志，补充部署拓扑注释（Next.js rewrites 本身是一跳）。
+5. `.env.example`：补充 Next.js rewrites 跳数提醒。
+
+#### 测试结果
+- 后端 `tsc --noEmit`：✅ 0 错误
+- 运行时测试（6 项）：✅ 全通过，含关键行为测试：
+  - 登录爆破（同 IP+username）第 6 次被 429 阻断 ✅
+  - 不同 username 独立计数（userA 耗尽不影响 userB）✅
+
+#### 是否放行
+✅ **放行**。
+
+---
+
+### 阶段 3：validateNumberField 显式 inclusive 语义（#3，🟠 中危）
+
+- **状态**：✅ 完成
+- **AI 模型**：ZCode (GLM-5.2)
+
+#### 本阶段完成内容
+- `adminController.ts`：将 `allowZero` 参数重命名为数学标准术语 `inclusive`（闭区间/开区间）。`inclusive: true` → `>= min`，默认 `false` → `> min`。行为完全等价，消除 `allowZero` 仅在 `min:0` 时名字合理的歧义。4 处 `allowZero: true` 调用点全部迁移为 `inclusive: true`。JSDoc 用数学区间记法 `(0,+∞)` / `[0,+∞)` 说明。
+
+#### 测试结果
+- 后端 `tsc --noEmit`：✅ 0 错误
+- 运行时测试（3 项）：✅ 全通过
+
+#### 是否放行
+✅ **放行**。
+
+---
+
+### 阶段 4：前端 diff 浮点比较健壮性（#4，🟠 中危）
+
+- **状态**：✅ 完成
+- **AI 模型**：ZCode (GLM-5.2)
+
+#### 本阶段完成内容
+- `frontend-next/src/app/admin/(dashboard)/products/page.tsx`：新增 `numChanged()` 浮点容差比较函数（相对容差 1e-9），替换 cpu/memory/disk/price/monthlyTraffic/bandwidth 的 `!==` 比较。消除浮点往返（DB Float → JSON → InputNumber → 回传）产生的微小编差导致未改动字段被误发送。
+
+#### 测试结果
+- 前端 `tsc --noEmit`：✅ 0 错误
+- 运行时测试（5 项）：✅ 全通过（相同值、浮点噪声、实质改变、null 处理、零值边界）
+
+#### 是否放行
+✅ **放行**。
+
+---
+
+### 阶段 5：getProductsByProvider 分页上限（#5，🟠 中危）
+
+- **状态**：✅ 完成
+- **AI 模型**：ZCode (GLM-5.2)
+
+#### 本阶段完成内容
+- `productController.ts`：`getAllProductIds` 加 `take: 10000` 上限；`getProductsByProvider` 加 `take: 200` 上限。防止极端数据量下无限制查询耗尽资源。
+
+#### 测试结果
+- 后端 `tsc --noEmit`：✅ 0 错误
+- 运行时测试（2 项）：✅ 全通过
+
+#### 是否放行
+✅ **放行**。
+
+---
+
+### 阶段 6：getAdminConfig 剥离内部字段（#6，🟠 中危）
+
+- **状态**：✅ 完成
+- **AI 模型**：ZCode (GLM-5.2)
+
+#### 本阶段完成内容
+1. 后端 `adminController.ts`：`getAdminConfig` 新增 `select: { configKey: true, configValue: true }`，不再暴露 `id`/`description`/`updatedAt` 内部元数据。
+2. 前端 `api.ts`：`SystemConfigItem` 类型精简为 `{ configKey, configValue }`，与后端响应一致。
+
+#### 测试结果
+- 后端 + 前端 `tsc --noEmit`：✅ 0 错误
+- 运行时测试（2 项）：✅ 全通过
+
+#### 是否放行
+✅ **放行**。
+
+---
+
+### 阶段 7：JWT algorithm 白名单（#7，🟡 低危）
+
+- **状态**：✅ 完成
+- **AI 模型**：ZCode (GLM-5.2)
+
+#### 本阶段完成内容
+- `adminController.ts`：`jwt.sign` 显式指定 `algorithm: 'HS256'`。
+- `auth.ts`：`jwt.verify` 显式指定 `algorithms: ['HS256']`（阶段 1 已完成）。两端锁定算法，纵深防御 `alg: none` 与算法混淆攻击。
+
+#### 测试结果
+- 后端 `tsc --noEmit`：✅ 0 错误
+- 运行时测试（3 项）：✅ 全通过，含关键安全测试：`alg:none` token 被拒绝 ✅
+
+#### 是否放行
+✅ **放行**。
+
+---
+
+### 阶段 8：auth 中间件校验 admin 仍存在（#8，🟡 低危）
+
+- **状态**：✅ 完成
+- **AI 模型**：ZCode (GLM-5.2)
+
+#### 本阶段完成内容
+- `auth.ts`：签名 + 吊销校验通过后，新增 `prisma.admin.findUnique({ where: { id }, select: { id: true } })` 查询，admin 不存在时返回 401。仅 select id 开销极小。DB 不可达时降级放行（不因 DB 抖动锁死管理员）。
+
+#### 测试结果
+- 后端 `tsc --noEmit`：✅ 0 错误
+- 运行时测试（3 项）：✅ 全通过
+
+#### 是否放行
+✅ **放行**。
+
+---
+
+### 阶段 9：CORS !origin 处理收紧（#9，🟡 低危）
+
+- **状态**：✅ 完成
+- **AI 模型**：ZCode (GLM-5.2)
+
+#### 本阶段完成内容
+- `app.ts`：新增 `/api/admin` 路由专用 Origin 收紧中间件。对携带 `Authorization` 头的写操作（POST/PUT/DELETE/PATCH），若 Origin 头存在但不在白名单中，返回 403。无 Origin 头的请求放行（兼容同源/Next.js 代理），公开 API 不受影响。
+
+#### 测试结果
+- 后端 `tsc --noEmit`：✅ 0 错误
+- 行为测试（4 项，supertest）：✅ 全通过（邪恶 Origin 403、合法 Origin 放行、无 Origin 放行、公开请求不受影响）
+
+#### 是否放行
+✅ **放行**。
+
+---
+
+### 阶段 10：DUMMY_PASSWORD_HASH 进程唯一化（#10，🟡 低危）
+
+- **状态**：✅ 完成
+- **AI 模型**：ZCode (GLM-5.2)
+
+#### 本阶段完成内容
+- `adminController.ts`：移除硬编码的 `DUMMY_PASSWORD_HASH` 常量，改为 `getDummyPasswordHash()` 函数——进程启动时用 `crypto.randomBytes` 生成随机密码，异步（不阻塞启动）计算 bcrypt hash 并缓存到 Promise。每次进程重启 hash 不同，消除固定公开 hash 的理论风险。
+
+#### 测试结果
+- 后端 `tsc --noEmit`：✅ 0 错误
+- 运行时测试（3 项）：✅ 全通过（含进程唯一性验证）
+
+#### 是否放行
+✅ **放行**。
+
+---
+
+### 阶段 11：错误日志脱敏（#11，🟡 低危）
+
+- **状态**：✅ 完成
+- **AI 模型**：ZCode (GLM-5.2)
+
+#### 本阶段完成内容
+1. 新增 `src/utils/logError.ts`：统一错误日志工具，仅输出 `name + code + message` 单行，不打印完整 error 对象（避免泄露 Prisma SQL 语句、参数值、堆栈路径）。
+2. 替换所有 controller/middleware 中的 `console.error('XXX:', error)` 为 `logError('XXX', error)`：adminController（8 处）、productController（5 处）、configController（1 处）、errorHandler（1 处）、tokenRevocation（1 处）。
+
+#### 测试结果
+- 后端 `tsc --noEmit`：✅ 0 错误
+- 运行时测试（5 项）：✅ 全通过，含关键验证：模拟 Prisma 错误的 query/params/stack 不泄露 ✅
+
+#### 是否放行
+✅ **放行**。
+
+---
+
+### 阶段 12：db.ts 不安全默认值（#12，🟡 低危）
+
+- **状态**：✅ 完成
+- **AI 模型**：ZCode (GLM-5.2)
+
+#### 本阶段完成内容
+1. `src/utils/db.ts`：新增 `readRequiredDbEnv()` 函数，生产环境强制校验 `DATABASE_HOST/USER/PASSWORD/NAME` 非空（缺失抛错拒绝启动），开发环境保留默认值并打印警告。与 `secrets.ts` 对 JWT_SECRET 的严格校验风格一致。
+2. `prisma/seed.ts`：同步应用相同的生产校验逻辑。
+3. `scripts/seedRuntime.ts` 自动继承（复用 db.ts 的 prisma）。
+
+#### 测试结果
+- 后端 `tsc --noEmit`：✅ 0 错误
+- 运行时测试（4 项）：✅ 全通过，含生产环境缺 DB 凭证抛错的子进程验证 ✅
+
+#### 是否放行
+✅ **放行**。
+
+---
+
+### 全局验证结果（第四轮最终）
+
+- `npx tsc --noEmit`（backend）：✅ 通过，0 错误。
+- `npx tsc --noEmit`（frontend-next）：✅ 通过，0 错误。
+- `npm run build`（frontend-next）：✅ 通过，24 个页面预渲染。
+- `npx prisma migrate deploy`：✅ 2 个 migration 成功应用（init + add_revoked_token）。
+- **E2E 端到端测试（真实后端 + 真实 MySQL，8 项）：✅ 全通过**
+  1. ✅ 公开 API 正常（51 条产品）
+  2. ✅ 登录成功 + JWT 含 jti claim
+  3. ✅ getAdminConfig 不含 description/id 内部字段
+  4. ✅ auth 中间件校验 admin 存在（有效 token 通过）
+  5. ✅ auth 拒绝无效 token（alg:none 防护）
+  6. ✅ **登出吊销 token 后，旧 token 立即失效（401）**
+  7. ✅ CORS admin 收紧：邪恶 Origin + Authorization 写操作 → 403
+  8. ✅ 错误日志脱敏生效
+- 12 项问题全部修复，每阶段测试通过后放行。

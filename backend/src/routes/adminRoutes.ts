@@ -3,6 +3,7 @@ import { auth } from '../middleware/auth';
 import { loginLimiter } from '../middleware/rateLimiter';
 import {
   login,
+  logout,
   addProduct,
   updateProduct,
   deleteProduct,
@@ -17,6 +18,9 @@ const router = Router();
 router.post('/login', loginLimiter, login);
 
 // 以下路由均需 JWT 认证
+// POST /api/admin/logout — 登出（服务端吊销当前 token）
+router.post('/logout', auth, logout);
+
 // GET /api/admin/products — 后台产品列表
 router.get('/products', auth, getAdminProducts);
 

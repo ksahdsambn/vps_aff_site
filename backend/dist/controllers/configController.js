@@ -4,6 +4,7 @@ exports.getConfig = getConfig;
 const db_1 = require("../utils/db");
 const response_1 = require("../utils/response");
 const types_1 = require("../types");
+const logError_1 = require("../utils/logError");
 /**
  * GET /api/config
  * 前端系统配置接口
@@ -31,7 +32,7 @@ async function getConfig(_req, res, _next) {
         (0, response_1.successResponse)(res, result);
     }
     catch (error) {
-        console.error('Get config error:', error);
+        (0, logError_1.logError)('Get config error', error);
         (0, response_1.errorResponse)(res, types_1.ERROR_CODES.INTERNAL_ERROR, '服务器内部错误', 500);
     }
 }

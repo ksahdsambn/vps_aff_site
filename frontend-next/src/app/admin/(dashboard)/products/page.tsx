@@ -26,6 +26,19 @@ import type { Product, ProductFormData, ProductUpdatePayload } from "@/lib/api";
 
 const { Option } = Select;
 
+/**
+ * 浮点安全比较：判断数值字段是否"实质改变"。
+ *
+ * 直接用 `!==` 比较 number 时，浮点精度往返（DB Float → JSON → InputNumber → 回传）
+ * 可能产生微小误差（如 24.0 vs 24.00000001）导致未改动字段被误判为已改动并发送。
+ * 此函数使用相对容差（1e-9）进行比较，消除浮点噪声。
+ */
+function numChanged(a: number | null | undefined, b: number | null | undefined): boolean {
+  if (a == null && b == null) return false;
+  if (a == null || b == null) return true;
+  return Math.abs(a - b) > 1e-9 * Math.max(Math.abs(a), Math.abs(b), 1);
+}
+
 interface ProductFormValues {
   provider: string;
   name: string;
@@ -168,11 +181,11 @@ export default function AdminProductsPage() {
         const payload: ProductUpdatePayload = {};
         if (values.provider !== editingRecord.provider) payload.provider = values.provider;
         if (values.name !== editingRecord.name) payload.name = values.name;
-        if (values.cpu !== editingRecord.cpu) payload.cpu = values.cpu;
-        if (values.memory !== editingRecord.memory) payload.memory = values.memory;
-        if (values.disk !== editingRecord.disk) payload.disk = values.disk;
+        if (numChanged(values.cpu, editingRecord.cpu)) payload.cpu = values.cpu;
+        if (numChanged(values.memory, editingRecord.memory)) payload.memory = values.memory;
+        if (numChanged(values.disk, editingRecord.disk)) payload.disk = values.disk;
         if (values.location !== editingRecord.location) payload.location = values.location;
-        if (values.price !== editingRecord.price) payload.price = values.price;
+        if (numChanged(values.price, editingRecord.price)) payload.price = values.price;
         if (currency !== editingRecord.currency) payload.currency = currency;
         const newReviewUrl = values.reviewUrl || null;
         if ((newReviewUrl ?? null) !== (editingRecord.reviewUrl ?? null))
@@ -185,7 +198,7 @@ export default function AdminProductsPage() {
           values.monthlyTrafficUnit === "TB"
             ? values.monthlyTrafficValue * 1000
             : values.monthlyTrafficValue;
-        if (trafficNormalized !== editingRecord.monthlyTraffic) {
+        if (numChanged(trafficNormalized, editingRecord.monthlyTraffic)) {
           payload.monthlyTraffic = {
             value: values.monthlyTrafficValue,
             unit: values.monthlyTrafficUnit,
@@ -196,7 +209,7 @@ export default function AdminProductsPage() {
           values.bandwidthUnit === "Gbps"
             ? values.bandwidthValue * 1000
             : values.bandwidthValue;
-        if (bandwidthNormalized !== editingRecord.bandwidth) {
+        if (numChanged(bandwidthNormalized, editingRecord.bandwidth)) {
           payload.bandwidth = {
             value: values.bandwidthValue,
             unit: values.bandwidthUnit,

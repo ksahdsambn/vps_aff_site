@@ -115,7 +115,7 @@ export interface LoginInput {
  */
 export interface LoginResponse {
     token: string;
-    expiresIn: string;
+    expiresIn: number;
 }
 export declare const ERROR_CODES: {
     readonly BAD_REQUEST: 400;

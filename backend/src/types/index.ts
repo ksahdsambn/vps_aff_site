@@ -150,7 +150,7 @@ export interface LoginInput {
  */
 export interface LoginResponse {
   token: string;
-  expiresIn: string;
+  expiresIn: number;
 }
 
 // ============================

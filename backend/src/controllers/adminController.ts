@@ -1,6 +1,7 @@
 import { Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import { prisma } from '../utils/db';
 import { AuthRequest } from '../middleware/auth';
 import { successResponse, errorResponse } from '../utils/response';
@@ -11,6 +12,43 @@ import {
   AdminProductListQuery,
   ConfigUpdateInput,
 } from '../types';
+import { isSafeHttpUrl, isSafeOptionalHttpUrl } from '../utils/validators';
+import { generateJti, revokeToken } from '../utils/tokenRevocation';
+import { logError } from '../utils/logError';
+
+/**
+ * 允许通过 Admin API 更新的配置项 key 白名单。
+ * 防止任意 key 被写入（即使数据库中已存在），限制可修改范围。
+ */
+const ALLOWED_CONFIG_KEYS = new Set([
+  'announcement_zh',
+  'announcement_en',
+  'link_telegram',
+  'link_youtube',
+  'link_blog',
+  'link_x',
+  'site_title_zh',
+  'site_title_en',
+  'site_logo',
+]);
+
+/**
+ * 值为 URL 的配置项 — 这些 key 的 configValue 必须通过 http(s) 协议校验，
+ * 防止 javascript:/data: 等危险协议被存储并渲染为 <a href> / <img src>。
+ */
+const URL_CONFIG_KEYS = new Set([
+  'link_telegram',
+  'link_youtube',
+  'link_blog',
+  'link_x',
+  'site_logo',
+]);
+
+/**
+ * JWT Token 有效期（秒）。30 分钟 = 1800 秒。
+ * 使用数字而非字符串（如 '30m'），使前后端契约统一为数字秒数。
+ */
+const TOKEN_EXPIRES_IN_SECONDS = 1800;
 
 /**
  * 用于抹平登录时序侧信道的占位 bcrypt hash。
@@ -19,10 +57,22 @@ import {
  * 而存在用户名时则要跑一次 ~100ms 的 bcrypt 比较 —— 攻击者可据此
  * 通过响应耗时枚举出有效用户名。
  *
- * 这里在模块加载时预生成一个 dummy hash，用户不存在时也执行一次
- * bcrypt.compare，使两条分支耗时接近一致。
+ * 改进：每个进程启动时用 crypto.randomBytes 生成一个随机占位密码并异步计算
+ * 其 bcrypt hash（cost=10），缓存到 Promise。这样：
+ * 1. 不阻塞应用启动（异步生成，首次 login 时 await）。
+ * 2. 每次进程重启的 dummy hash 不同（进程唯一），消除固定公开 hash 的理论风险
+ *    ——即使某管理员碰巧使用了与旧固定值匹配的密码，也无法被据此区分。
+ * 3. 用户不存在时仍 await 一次 bcrypt.compare，使两条分支耗时接近一致。
  */
-const DUMMY_PASSWORD_HASH = bcrypt.hashSync('__nonexistent_user_placeholder__', 10);
+let dummyHashPromise: Promise<string> | null = null;
+
+function getDummyPasswordHash(): Promise<string> {
+  if (!dummyHashPromise) {
+    const randomPassword = crypto.randomBytes(32).toString('hex');
+    dummyHashPromise = bcrypt.hash(randomPassword, 10);
+  }
+  return dummyHashPromise;
+}
 
 function normalizeRequiredString(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
@@ -54,10 +104,25 @@ function parseFiniteNumber(value: unknown): number | null {
   return null;
 }
 
+/**
+ * 校验数值字段。
+ *
+ * @param options.min        下限阈值（默认 0）。
+ * @param options.inclusive  min 是否为闭区间（true: parsed >= min；false: parsed > min）。默认 false。
+ *
+ * 语义说明（使用数学区间术语，消除 allowZero 的歧义）：
+ * - `{ min: 0 }`（inclusive 默认 false）          → 要求 parsed > 0，即 (0, +∞)，拒绝 0 和负数。
+ * - `{ min: 0, inclusive: true }`                 → 要求 parsed >= 0，即 [0, +∞)，允许 0 但拒绝负数。
+ * - `{ min: 1 }`（inclusive 默认 false）          → 要求 parsed > 1，即 (1, +∞)。
+ * - `{ min: 1, inclusive: true }`                 → 要求 parsed >= 1，即 [1, +∞)。
+ *
+ * inclusive 一词来自数学区间（闭区间 [] / 开区间 ()），比 allowZero 更准确——
+ * 后者仅在 min=0 时名字合理，当 min 非 0 时名字会产生误导。
+ */
 function validateNumberField(
   value: unknown,
   field: string,
-  options: { min?: number; allowZero?: boolean } = {},
+  options: { min?: number; inclusive?: boolean } = {},
 ): { value: number } | { error: string } {
   const parsed = parseFiniteNumber(value);
   if (parsed === null) {
@@ -65,10 +130,10 @@ function validateNumberField(
   }
 
   const min = options.min ?? 0;
-  const isValid = options.allowZero ? parsed >= min : parsed > min;
+  const isValid = options.inclusive ? parsed >= min : parsed > min;
 
   if (!isValid) {
-    const operator = options.allowZero ? '>=' : '>';
+    const operator = options.inclusive ? '>=' : '>';
     return { error: `Field ${field} must be ${operator} ${min}` };
   }
 
@@ -78,7 +143,7 @@ function validateNumberField(
 function normalizeTrafficInput(value: unknown): { value: number } | { error: string } {
   if (typeof value === 'object' && value !== null) {
     const { value: rawValue, unit } = value as { value?: unknown; unit?: unknown };
-    const parsed = validateNumberField(rawValue, 'monthlyTraffic', { min: 0, allowZero: true });
+    const parsed = validateNumberField(rawValue, 'monthlyTraffic', { min: 0, inclusive: true });
     if ('error' in parsed) {
       return parsed;
     }
@@ -90,7 +155,7 @@ function normalizeTrafficInput(value: unknown): { value: number } | { error: str
     return { value: unit === 'TB' ? parsed.value * 1000 : parsed.value };
   }
 
-  return validateNumberField(value, 'monthlyTraffic', { min: 0, allowZero: true });
+  return validateNumberField(value, 'monthlyTraffic', { min: 0, inclusive: true });
 }
 
 function normalizeBandwidthInput(value: unknown): { value: number } | { error: string } {
@@ -127,7 +192,7 @@ export async function login(req: AuthRequest, res: Response, _next: NextFunction
 
     if (!admin) {
       // 用户名不存在时也执行一次 bcrypt 比较，抹平响应时序，防止用户名枚举。
-      await bcrypt.compare(password, DUMMY_PASSWORD_HASH);
+      await bcrypt.compare(password, await getDummyPasswordHash());
       errorResponse(res, ERROR_CODES.LOGIN_FAILED, 'Invalid username or password', 401);
       return;
     }
@@ -139,9 +204,9 @@ export async function login(req: AuthRequest, res: Response, _next: NextFunction
     }
 
     const token = jwt.sign(
-      { adminId: admin.id, username: admin.username },
+      { adminId: admin.id, username: admin.username, jti: generateJti() },
       getJwtSecret(),
-      { expiresIn: '30m' },
+      { expiresIn: TOKEN_EXPIRES_IN_SECONDS, algorithm: 'HS256' },
     );
 
     await prisma.admin.update({
@@ -151,10 +216,10 @@ export async function login(req: AuthRequest, res: Response, _next: NextFunction
 
     successResponse(res, {
       token,
-      expiresIn: '30m',
+      expiresIn: TOKEN_EXPIRES_IN_SECONDS,
     });
   } catch (error) {
-    console.error('Login error:', error);
+    logError('Login error', error);
     errorResponse(res, ERROR_CODES.INTERNAL_ERROR, 'Internal server error', 500);
   }
 }
@@ -178,6 +243,18 @@ export async function addProduct(req: AuthRequest, res: Response, _next: NextFun
       return;
     }
 
+    // affiliateUrl 必须为 http/https 协议，防止 javascript:/data: 等危险协议
+    if (!isSafeHttpUrl(affiliateUrl)) {
+      errorResponse(res, ERROR_CODES.BAD_REQUEST, 'affiliateUrl must be a valid http(s) URL', 400);
+      return;
+    }
+
+    // reviewUrl 可选，但若提供必须为合法 http(s) URL
+    if (!isSafeOptionalHttpUrl(normalizeOptionalString(body.reviewUrl))) {
+      errorResponse(res, ERROR_CODES.BAD_REQUEST, 'reviewUrl must be a valid http(s) URL', 400);
+      return;
+    }
+
     const cpu = validateNumberField(body.cpu, 'cpu', { min: 0 });
     if ('error' in cpu) {
       errorResponse(res, ERROR_CODES.BAD_REQUEST, cpu.error, 400);
@@ -196,7 +273,7 @@ export async function addProduct(req: AuthRequest, res: Response, _next: NextFun
       return;
     }
 
-    const price = validateNumberField(body.price, 'price', { min: 0, allowZero: true });
+    const price = validateNumberField(body.price, 'price', { min: 0, inclusive: true });
     if ('error' in price) {
       errorResponse(res, ERROR_CODES.BAD_REQUEST, price.error, 400);
       return;
@@ -234,7 +311,7 @@ export async function addProduct(req: AuthRequest, res: Response, _next: NextFun
 
     successResponse(res, product, 201);
   } catch (error) {
-    console.error('Add product error:', error);
+    logError('Add product error', error);
     errorResponse(res, ERROR_CODES.INTERNAL_ERROR, 'Internal server error', 500);
   }
 }
@@ -314,7 +391,7 @@ export async function updateProduct(req: AuthRequest, res: Response, _next: Next
     }
 
     if (body.price !== undefined) {
-      const price = validateNumberField(body.price, 'price', { min: 0, allowZero: true });
+      const price = validateNumberField(body.price, 'price', { min: 0, inclusive: true });
       if ('error' in price) {
         errorResponse(res, ERROR_CODES.BAD_REQUEST, price.error, 400);
         return;
@@ -332,7 +409,12 @@ export async function updateProduct(req: AuthRequest, res: Response, _next: Next
     }
 
     if (body.reviewUrl !== undefined) {
-      updateData.reviewUrl = normalizeOptionalString(body.reviewUrl);
+      const reviewUrl = normalizeOptionalString(body.reviewUrl);
+      if (!isSafeOptionalHttpUrl(reviewUrl)) {
+        errorResponse(res, ERROR_CODES.BAD_REQUEST, 'reviewUrl must be a valid http(s) URL', 400);
+        return;
+      }
+      updateData.reviewUrl = reviewUrl;
     }
 
     if (body.remark !== undefined) {
@@ -343,6 +425,10 @@ export async function updateProduct(req: AuthRequest, res: Response, _next: Next
       const affiliateUrl = normalizeRequiredString(body.affiliateUrl);
       if (!affiliateUrl) {
         errorResponse(res, ERROR_CODES.BAD_REQUEST, 'Field affiliateUrl cannot be empty', 400);
+        return;
+      }
+      if (!isSafeHttpUrl(affiliateUrl)) {
+        errorResponse(res, ERROR_CODES.BAD_REQUEST, 'affiliateUrl must be a valid http(s) URL', 400);
         return;
       }
       updateData.affiliateUrl = affiliateUrl;
@@ -378,7 +464,7 @@ export async function updateProduct(req: AuthRequest, res: Response, _next: Next
 
     successResponse(res, product);
   } catch (error) {
-    console.error('Update product error:', error);
+    logError('Update product error', error);
     errorResponse(res, ERROR_CODES.INTERNAL_ERROR, 'Internal server error', 500);
   }
 }
@@ -400,6 +486,12 @@ export async function deleteProduct(req: AuthRequest, res: Response, _next: Next
       return;
     }
 
+    // 已软删除的产品返回幂等成功消息，避免重复"删除"造成语义混淆
+    if (existing.isDeleted) {
+      successResponse(res, { message: 'Product already deleted' });
+      return;
+    }
+
     await prisma.product.update({
       where: { id },
       data: { isDeleted: true },
@@ -407,7 +499,7 @@ export async function deleteProduct(req: AuthRequest, res: Response, _next: Next
 
     successResponse(res, { message: 'Product deleted' });
   } catch (error) {
-    console.error('Delete product error:', error);
+    logError('Delete product error', error);
     errorResponse(res, ERROR_CODES.INTERNAL_ERROR, 'Internal server error', 500);
   }
 }
@@ -456,7 +548,7 @@ export async function getAdminProducts(req: AuthRequest, res: Response, _next: N
       list,
     });
   } catch (error) {
-    console.error('Get admin products error:', error);
+    logError('Get admin products error', error);
     errorResponse(res, ERROR_CODES.INTERNAL_ERROR, 'Internal server error', 500);
   }
 }
@@ -465,11 +557,14 @@ export async function getAdminConfig(req: AuthRequest, res: Response, _next: Nex
   try {
     const configs = await prisma.systemConfig.findMany({
       orderBy: { id: 'asc' },
+      // 仅返回前端需要的字段，剥离内部元数据（id / description），
+      // 避免向后端消费者暴露数据库内部结构（信息暴露收敛）。
+      select: { configKey: true, configValue: true },
     });
 
     successResponse(res, configs);
   } catch (error) {
-    console.error('Get admin config error:', error);
+    logError('Get admin config error', error);
     errorResponse(res, ERROR_CODES.INTERNAL_ERROR, 'Internal server error', 500);
   }
 }
@@ -484,6 +579,23 @@ export async function updateConfig(req: AuthRequest, res: Response, _next: NextF
       return;
     }
 
+    // 白名单校验：仅允许预定义的配置项被更新
+    if (!ALLOWED_CONFIG_KEYS.has(normalizedConfigKey)) {
+      errorResponse(res, ERROR_CODES.BAD_REQUEST, 'Unknown or disallowed configKey', 400);
+      return;
+    }
+
+    const normalizedValue = normalizeOptionalString(configValue) ?? '';
+
+    // URL 类配置项必须通过 http(s) 协议校验，防止 javascript:/data: 等危险协议。
+    // 此校验在 DB 查询之前执行，确保危险输入在任何 I/O 之前即被拒绝。
+    if (URL_CONFIG_KEYS.has(normalizedConfigKey)) {
+      if (!isSafeOptionalHttpUrl(normalizedValue)) {
+        errorResponse(res, ERROR_CODES.BAD_REQUEST, `${normalizedConfigKey} must be a valid http(s) URL`, 400);
+        return;
+      }
+    }
+
     const existing = await prisma.systemConfig.findUnique({
       where: { configKey: normalizedConfigKey },
     });
@@ -496,7 +608,7 @@ export async function updateConfig(req: AuthRequest, res: Response, _next: NextF
     try {
       const updated = await prisma.systemConfig.update({
         where: { configKey: normalizedConfigKey },
-        data: { configValue: normalizeOptionalString(configValue) ?? '' },
+        data: { configValue: normalizedValue },
       });
 
       successResponse(res, updated);
@@ -504,7 +616,43 @@ export async function updateConfig(req: AuthRequest, res: Response, _next: NextF
       errorResponse(res, ERROR_CODES.CONFIG_UPDATE_FAILED, 'Failed to update config', 500);
     }
   } catch (error) {
-    console.error('Update config error:', error);
+    logError('Update config error', error);
+    errorResponse(res, ERROR_CODES.INTERNAL_ERROR, 'Internal server error', 500);
+  }
+}
+
+/**
+ * POST /api/admin/logout — 登出当前会话（服务端吊销 token）。
+ *
+ * 从 Authorization 头解析当前 token 的 jti 与 exp，写入 RevokedToken 表。
+ * 即使客户端未清除 localStorage，该 token 在后续请求中也会被 auth 中间件拒绝。
+ */
+export async function logout(req: AuthRequest, res: Response, _next: NextFunction): Promise<void> {
+  try {
+    // auth 中间件已校验 token 并将 admin 挂载到 req.admin，但未暴露 jti/exp。
+    // 此处从原始 token 重新解码（不验签——中间件已验过），取出 jti 与 exp。
+    const authHeader = req.headers.authorization;
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+
+    if (token) {
+      try {
+        const decoded = jwt.decode(token) as {
+          jti?: string;
+          adminId?: number;
+          exp?: number;
+        } | null;
+
+        if (decoded?.jti && decoded?.adminId && typeof decoded.exp === 'number') {
+          await revokeToken(decoded.jti, decoded.adminId, new Date(decoded.exp * 1000));
+        }
+      } catch {
+        // 解码失败不应阻断登出响应（客户端仍会清除本地 token）。
+      }
+    }
+
+    successResponse(res, { message: 'Logged out' });
+  } catch (error) {
+    logError('Logout error', error);
     errorResponse(res, ERROR_CODES.INTERNAL_ERROR, 'Internal server error', 500);
   }
 }

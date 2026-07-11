@@ -51,3 +51,15 @@ model Admin {
   createdAt    DateTime  @default(now())
   lastLoginAt  DateTime?
 }
+
+/// JWT 服务端吊销表：记录被主动吊销的 token（logout / 强制下线）。
+/// 通过 $queryRaw 访问（不经过生成客户端），auth 中间件每次校验 jti 是否在此表中。
+model RevokedToken {
+  jti        String   @id @db.VarChar(64)
+  adminId    Int
+  expiresAt  DateTime
+  revokedAt  DateTime @default(now())
+
+  @@index([adminId])
+  @@index([expiresAt])
+}

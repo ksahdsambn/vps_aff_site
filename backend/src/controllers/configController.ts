@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../utils/db';
 import { successResponse, errorResponse } from '../utils/response';
 import { ERROR_CODES, FrontendConfig } from '../types';
+import { logError } from '../utils/logError';
 
 /**
  * GET /api/config
@@ -32,7 +33,7 @@ export async function getConfig(_req: Request, res: Response, _next: NextFunctio
 
     successResponse(res, result);
   } catch (error) {
-    console.error('Get config error:', error);
+    logError('Get config error', error);
     errorResponse(res, ERROR_CODES.INTERNAL_ERROR, '服务器内部错误', 500);
   }
 }

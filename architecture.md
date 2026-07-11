@@ -194,3 +194,61 @@
 | `src/app/[locale]/layout.tsx`（增强） | 5 | generateMetadata 用 SITE_URL 常量替代内联 process.env |
 | `src/components/LanguageSwitcher.tsx`（增强） | 6 | 新增 hasLocalePrefix guard，无 locale 前缀时回退到首页 |
 | `src/components/LangSync.tsx`（更新注释） | 4 | 注释说明 suppressHydrationWarning + content-language 缓解策略 |
+
+### 第三轮安全审查修复产物（13 项 Bug + 安全漏洞）
+
+| 文件 | 修复# | 作用 |
+|---|---|---|
+| `backend/src/app.ts`（重写 CORS/proxy/body） | 1/6/7 | CORS 移除通配符 `*` 放行（生产环境 `*` 拒绝启动；开发降级 localhost 白名单）；JSON body 限制 10mb→1mb；`trust proxy` 改为 `TRUST_PROXY_HOPS` 环境变量可配置 |
+| `backend/src/utils/validators.ts`（新增实现） | 2/3 | `isSafeHttpUrl()` / `isSafeOptionalHttpUrl()` — 使用 URL 构造器校验协议白名单（仅 http/https），拒绝 javascript:/data:/vbscript:/file: 等危险协议 |
+| `backend/src/controllers/adminController.ts`（增强） | 2/3/4/8/9/13 | `ALLOWED_CONFIG_KEYS` 白名单（9 个预定义 key）；`URL_CONFIG_KEYS` 集合强制 URL 类配置值协议校验；`addProduct`/`updateProduct` 校验 affiliateUrl/reviewUrl 为 http(s)；`TOKEN_EXPIRES_IN_SECONDS=1800`（数字而非字符串 '30m'）；`DUMMY_PASSWORD_HASH` 改预生成常量（消除加载时同步 bcrypt）；`deleteProduct` 幂等检查已删除产品；`validateNumberField` 新增 JSDoc 语义说明 |
+| `backend/src/middleware/errorHandler.ts`（增强） | 5 | 新增 `asyncHandler()` 包装器（`Promise.resolve(fn).catch(next)`），Express 5 原生支持 + 纵深防御，确保未来遗漏 try/catch 的 async controller 也能兜底 |
+| `backend/src/types/index.ts`（修复） | 4 | `LoginResponse.expiresIn` 类型 string→number，与前端契约统一 |
+| `frontend-next/src/components/admin/AuthGuard.tsx`（增强） | 11 | 新增 `setInterval` 定时器（30s 轮询）在 token 过期时主动登出跳转登录页，`useRef` 管理 timer + cleanup 清除，替代原仅挂载时检查一次的实现 |
+| `backend/.env`（更新） | 1/7/12 | `CORS_ORIGIN=*` → 显式白名单 `http://localhost,http://localhost:3000`；新增 `TRUST_PROXY_HOPS=1` |
+| `.env.example`（更新） | 1/7 | 新增 `TRUST_PROXY_HOPS` 说明；CORS_ORIGIN 注释说明生产环境禁止 `*` |
+
+#### 各文件作用总览（第三轮新增/变更）
+
+| 文件 | 作用 |
+|---|---|
+| `backend/src/utils/validators.ts` | URL 协议白名单校验工具集。`isSafeHttpUrl()` 校验必填 URL（http/https only），`isSafeOptionalHttpUrl()` 校验可选 URL（允许空值）。防止 javascript:/data: 等危险协议被存储到 DB 并渲染为 `<a href>`/`<img src>` 导致存储型 XSS |
+| `backend/src/middleware/errorHandler.ts`（增强） | 除原有 `errorHandler` 统一错误中间件外，新增 `asyncHandler()` 包装器。Express 5 已原生支持 async rejection 转发，此包装器为纵深防御——未来新增 controller 即使遗漏 try/catch，rejection 也会被 `catch(next)` 传递给 errorHandler |
+| `backend/src/app.ts`（增强） | CORS 安全加固：生产环境拒绝 `*` 通配符启动；origin 回调仅放行白名单内来源（不再对任意 origin 返回 true）。JSON body 限制从 10mb 降至 1mb 防 DoS。`trust proxy` 从硬编码 `1` 改为 `TRUST_PROXY_HOPS` 环境变量可配置，适配多层代理部署 |
+| `backend/src/controllers/adminController.ts`（增强） | 配置管理白名单（`ALLOWED_CONFIG_KEYS`）+ URL 配置协议校验（`URL_CONFIG_KEYS`）。产品 URL 字段（affiliateUrl/reviewUrl）协议校验。`TOKEN_EXPIRES_IN_SECONDS` 数字常量统一前后端契约。预生成 `DUMMY_PASSWORD_HASH` 常量。`deleteProduct` 幂等语义。`validateNumberField` JSDoc |
+| `frontend-next/src/components/admin/AuthGuard.tsx`（增强） | 30 秒轮询定时器主动检测 token 过期并跳转登录页，`useRef` 管理 timer + `useEffect` cleanup 清除，防止用户停留在过期页面不自知 |
+
+### 第四轮深度安全审查修复产物（12 项 Bug + 安全漏洞）
+
+| 文件 | 修复# | 作用 |
+|---|---|---|
+| `backend/src/utils/tokenRevocation.ts`（新增） | 1 | JWT 服务端吊销机制。`generateJti()` 生成 token 唯一 ID；`revokeToken(jti, adminId, expiresAt)` 写入 RevokedToken 表（含过期记录 GC）；`isTokenRevoked(jti)` 查询吊销状态。通过 `$queryRawUnsafe` 访问（不依赖重新生成 client），表不存在时优雅降级 |
+| `backend/prisma/migrations/20260711120000_add_revoked_token/migration.sql`（新增） | 1 | 创建 `RevokedToken` 表的 migration（jti 主键 + adminId 索引 + expiresAt 索引） |
+| `backend/prisma/schema.prisma`（增强） | 1 | 新增 `RevokedToken` 模型声明（jti/adminId/expiresAt/revokedAt），与 migration 保持文档同步 |
+| `backend/src/middleware/auth.ts`（重写为 async） | 1/7/8 | 改为 async；`jwt.verify` 显式 `algorithms: ['HS256']`（#7）；签名校验后查 `isTokenRevoked(jti)` 拒绝已吊销 token（#1）；再查 `prisma.admin.findUnique` 确认 admin 仍存在（#8）；DB 不可达时降级放行 |
+| `backend/src/controllers/adminController.ts`（增强） | 1/3/6/7/10 | `login` 签发 JWT 带 `jti` claim + `algorithm: 'HS256'`（#1/7）；新增 `logout` 函数（吊销当前 token，#1）；`getAdminConfig` 加 `select` 仅返回 configKey+configValue（#6）；`validateNumberField` 参数 `allowZero`→`inclusive`（数学区间术语，#3）；`DUMMY_PASSWORD_HASH` 硬编码常量→`getDummyPasswordHash()` 进程唯一异步生成（#10）；导入 `crypto` |
+| `backend/src/routes/adminRoutes.ts`（增强） | 1 | 注册 `POST /api/admin/logout`（auth 保护） |
+| `backend/src/middleware/rateLimiter.ts`（重写） | 2 | 新增 `getClientIp()`（私有 IP 回退 X-Forwarded-For 最左侧）+ `isPrivateIp()`；`globalLimiter` 显式 keyGenerator；`loginLimiter` 改为 **IP + username 组合计数**——防 IP 伪造绕过 + NAT 不误伤 |
+| `backend/src/app.ts`（增强） | 2/9 | trust proxy 加生产环境诊断日志 + 部署拓扑注释（#2）；新增 `/api/admin` Origin 收紧中间件：credentialed 写操作（带 Authorization 的 POST/PUT/DELETE/PATCH）邪恶 Origin 返回 403（#9） |
+| `backend/src/controllers/productController.ts`（增强） | 5 | `getAllProductIds` 加 `take: 10000` 上限；`getProductsByProvider` 加 `take: 200` 上限（防资源耗尽） |
+| `backend/src/utils/logError.ts`（新增） | 11 | 统一错误日志工具。`logError(label, error)` 仅输出 `name + code + message` 单行，不打印完整 error 对象（避免泄露 Prisma SQL 语句/参数值/堆栈路径到日志采集系统） |
+| `backend/src/controllers/*.ts` + `middleware/errorHandler.ts` + `utils/tokenRevocation.ts` | 11 | 全部 `console.error('XXX:', error)` 替换为 `logError('XXX', error)`（共 16 处） |
+| `backend/src/utils/db.ts`（增强） | 12 | 新增 `readRequiredDbEnv()`：生产环境强制校验 `DATABASE_HOST/USER/PASSWORD/NAME` 非空（缺失抛错拒绝启动），开发环境保留默认值并警告。与 secrets.ts 对 JWT_SECRET 的严格校验风格一致 |
+| `backend/prisma/seed.ts`（增强） | 12 | 同步应用 `readRequiredDbEnv` 生产校验逻辑 |
+| `frontend-next/src/app/admin/(dashboard)/products/page.tsx`（增强） | 4 | 新增 `numChanged()` 浮点容差比较函数（相对容差 1e-9），替换数值字段 diff 的 `!==` 比较，消除浮点往返偏差导致的误判 |
+| `frontend-next/src/lib/api.ts`（增强） | 1/6 | 新增 `adminLogout()` 调用后端吊销（#1）；`SystemConfigItem` 类型精简为 `{ configKey, configValue }`（#6） |
+| `frontend-next/src/components/admin/AdminShell.tsx`（增强） | 1 | 登出按钮改为先调后端 `adminLogout()` 吊销 token 再清本地 localStorage |
+| `.env.example`（更新） | 2 | TRUST_PROXY_HOPS 补充 Next.js rewrites 跳数提醒 |
+
+#### 各文件作用总览（第四轮新增/变更）
+
+| 文件 | 作用 |
+|---|---|
+| `backend/src/utils/tokenRevocation.ts`（新增） | JWT 服务端吊销机制核心。解决"JWT 一旦签发在有效期内无法服务端失效"的架构缺口——支持 logout 主动吊销、泄露 token 强制下线。通过 `$queryRawUnsafe` 访问 RevokedToken 表，表不存在（migration 未执行）时降级关闭，应用仍可正常运行。含过期记录自动 GC |
+| `backend/src/utils/logError.ts`（新增） | 统一脱敏错误日志工具。解决 `console.error('label:', error)` 打印完整 Prisma error 对象（含 SQL 语句、参数值、堆栈路径）到容器日志被外部采集系统的敏感信息泄露风险。仅输出 name/code/message 单行 |
+| `backend/src/middleware/auth.ts`（重写） | JWT 认证中间件升级为三重校验：①签名+过期+算法白名单（HS256）②RevokedToken 吊销校验（服务端失效）③admin 存在性校验（删除账号后旧 token 失效）。改为 async 以支持吊销/存在性的 DB 查询，DB 不可达时降级放行 |
+| `backend/src/middleware/rateLimiter.ts`（重写） | 限速器 IP 提取加固 + 登录限速组合策略。`getClientIp` 在 trust proxy 配置不当时回退到 X-Forwarded-For 最左侧真实客户端 IP；`loginLimiter` 按 IP+username 组合计数，防 IP 伪造绕过 + NAT 下不同用户独立计数不误伤 |
+| `backend/src/utils/db.ts`（增强） | 数据库凭证生产环境强制校验。消除 `password || 'password'` 不安全默认值在生产误配置时静默用弱凭证连接的风险，与 JWT_SECRET 校验风格一致 |
+| `backend/prisma/migrations/20260711120000_add_revoked_token/`（新增） | RevokedToken 建表 migration，由 `prisma migrate deploy` 执行 |
+| `backend/src/controllers/adminController.ts`（增强） | 登出控制器 + jti claim + HS256 签发 + getAdminConfig 字段收敛 + validateNumberField inclusive 语义 + 进程唯一 dummy hash |
+| `frontend-next/src/app/admin/(dashboard)/products/page.tsx`（增强） | 编辑产品 diff 算法浮点健壮性——`numChanged` 相对容差比较，防未改动字段因浮点往返偏差被误发送 |

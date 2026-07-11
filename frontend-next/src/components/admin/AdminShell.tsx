@@ -8,6 +8,7 @@ import {
   LogoutOutlined,
 } from "@ant-design/icons";
 import { useRouter, usePathname } from "next/navigation";
+import { adminLogout } from "@/lib/api";
 
 const { Header, Sider, Content } = Layout;
 
@@ -22,7 +23,10 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   const router = useRouter();
   const pathname = usePathname();
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    // 先调用后端吊销 token（服务端失效），再清除本地 token 并跳转。
+    // adminLogout 内部吞掉错误，确保客户端登出不会被网络问题阻断。
+    await adminLogout();
     localStorage.removeItem("token");
     router.replace("/admin/login");
   };

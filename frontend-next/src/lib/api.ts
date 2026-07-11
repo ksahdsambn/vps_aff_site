@@ -69,11 +69,8 @@ export interface FrontendConfig {
 }
 
 export interface SystemConfigItem {
-  id: number;
   configKey: string;
   configValue: string | null;
-  description: string | null;
-  updatedAt: string;
 }
 
 export interface LoginResponse {
@@ -363,6 +360,16 @@ export async function adminDeleteProduct(id: number): Promise<void> {
   const res = await api.delete<ApiResponse<null>>(`/admin/products/${id}`);
   if (res.data.code !== 0) {
     throw new Error(res.data.message || "Delete failed");
+  }
+}
+
+/** 后台登出（服务端吊销当前 token）。失败不阻断客户端清除本地 token。 */
+export async function adminLogout(): Promise<void> {
+  try {
+    const api = await getAdminApi();
+    await api.post<ApiResponse<null>>("/admin/logout");
+  } catch {
+    // 服务端吊销失败（如网络错误）不应阻断客户端登出流程。
   }
 }
 
