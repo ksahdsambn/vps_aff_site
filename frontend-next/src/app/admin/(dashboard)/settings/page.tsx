@@ -67,7 +67,7 @@ export default function AdminSettingsPage() {
           style={{
             marginTop: 24,
             marginBottom: 16,
-            borderBottom: "1px solid #f0f0f0",
+            borderBottom: "1px solid var(--rule)",
             paddingBottom: 8,
           }}
         >
@@ -90,7 +90,7 @@ export default function AdminSettingsPage() {
           style={{
             marginTop: 24,
             marginBottom: 16,
-            borderBottom: "1px solid #f0f0f0",
+            borderBottom: "1px solid var(--rule)",
             paddingBottom: 8,
           }}
         >

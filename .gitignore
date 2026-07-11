@@ -23,3 +23,12 @@ build/
 npm-debug.log*
 .DS_Store
 Thumbs.db
+
+# ---- 工具 / 临时产物（不入库）----
+# Playwright CLI 运行时产物（截图、snapshot、trace）
+.playwright-cli/
+**/.playwright-cli/
+# 截图等验证产物输出目录
+output/
+# ZCode 客户端本地缓存
+.zcode/

@@ -1,32 +1,19 @@
 "use client";
 
 import React from "react";
-import {
-  Card,
-  Button,
-  Typography,
-  Pagination,
-  Select,
-  Row,
-  Col,
-  Divider,
-  Tooltip,
-  Empty,
-  Tag,
-} from "antd";
+import { Pagination, Select, Empty } from "antd";
 import { useTranslation } from "react-i18next";
 import {
   ShoppingCartOutlined,
   ExportOutlined,
-  QuestionCircleOutlined,
   GlobalOutlined,
   ThunderboltOutlined,
   InteractionOutlined,
 } from "@ant-design/icons";
 import type { Product } from "@/lib/api";
+import SpecStat from "@/components/ui/SpecStat";
+import Button from "@/components/ui/Button";
 import styles from "./ProductCard.module.css";
-
-const { Text, Link } = Typography;
 
 interface ProductCardProps {
   data: Product[];
@@ -41,8 +28,10 @@ interface ProductCardProps {
 }
 
 /**
- * 移动端产品卡片列表（客户端组件）。
- * 从旧前端迁移，逻辑平移。
+ * 移动端产品卡片列表（客户端组件）—— Editorial-Data Minimal。
+ *
+ * 不透明卡片 + hairline 边框（无玻璃态）。悬停仅 border→accent + 微底色，
+ * 无 translateY/scale。规格走 SpecStat，下单走共享 Button。
  */
 const ProductCardList: React.FC<ProductCardProps> = ({
   data,
@@ -86,7 +75,7 @@ const ProductCardList: React.FC<ProductCardProps> = ({
           {t("sort.label")}
         </span>
         <Select
-          style={{ width: 140 }}
+          style={{ width: 150 }}
           placeholder={t("sort.default")}
           options={sortOptions}
           onChange={handleSortChange}
@@ -96,134 +85,79 @@ const ProductCardList: React.FC<ProductCardProps> = ({
       </div>
 
       {data.length === 0 && !loading ? (
-        <div
-          style={{
-            padding: "60px 0",
-            background: "rgba(255,255,255,0.4)",
-            borderRadius: 20,
-            backdropFilter: "blur(10px)",
-          }}
-        >
+        <div className={styles.emptyWrap}>
           <Empty description={t("table.noData")} />
         </div>
       ) : (
         <div className={styles.cardList}>
           {data.map((item, index) => (
-            <Card
+            <article
               key={item.id}
               className={`${styles.card} stagger-item stagger-delay-${(index % 10) + 1}`}
-              styles={{ body: { padding: 20 } }}
             >
               <div className={styles.cardHeader}>
-                <Tag color="blue" style={{ borderRadius: 6, fontWeight: 700 }}>
-                  {item.provider}
-                </Tag>
+                <span className={styles.provider}>{item.provider}</span>
                 <div className={styles.price}>
-                  {item.price.toFixed(2)} {item.currency}
-                  <Tooltip title={t("table.priceSortTip")}>
-                    <QuestionCircleOutlined style={{ fontSize: 14, marginLeft: 8, color: "#94a3b8" }} />
-                  </Tooltip>
+                  <span className="num">
+                    {item.price.toFixed(2)} {item.currency}
+                  </span>
+                  <span className={styles.priceUnit}>/ {t("table.price")}</span>
                 </div>
               </div>
               <div className={styles.name}>{item.name}</div>
 
-              <Divider style={{ margin: "16px 0", borderColor: "rgba(0,0,0,0.04)" }} />
+              <hr className={styles.rule} />
 
-              <Row gutter={[16, 16]} className={styles.details}>
-                <Col span={12}>
-                  <div style={{ marginBottom: 12 }}>
-                    <Text type="secondary" style={{ fontSize: 13 }}>
-                      {t("table.cpu")}:
-                    </Text>
-                    <div style={{ fontWeight: 700 }}>
-                      {item.cpu} {t("table.cpuUnit")}
-                    </div>
-                  </div>
-                </Col>
-                <Col span={12}>
-                  <div style={{ marginBottom: 12 }}>
-                    <Text type="secondary" style={{ fontSize: 13 }}>
-                      {t("table.memory")}:
-                    </Text>
-                    <div style={{ fontWeight: 700 }}>
-                      {item.memory} {t("table.memoryUnit")}
-                    </div>
-                  </div>
-                </Col>
-                <Col span={12}>
-                  <div style={{ marginBottom: 12 }}>
-                    <Text type="secondary" style={{ fontSize: 13 }}>
-                      {t("table.disk")}:
-                    </Text>
-                    <div style={{ fontWeight: 700 }}>
-                      {item.disk} {t("table.diskUnit")}
-                    </div>
-                  </div>
-                </Col>
-                <Col span={12}>
-                  <Text type="secondary" style={{ fontSize: 13 }}>
-                    <InteractionOutlined style={{ marginRight: 6 }} />
-                    {t("table.monthlyTraffic")}:
-                  </Text>
-                  <div style={{ fontWeight: 600 }}>{(item.monthlyTraffic / 1000).toFixed(2)} TB</div>
-                </Col>
-                <Col span={12}>
-                  <Text type="secondary" style={{ fontSize: 13 }}>
-                    <ThunderboltOutlined style={{ marginRight: 6 }} />
-                    {t("table.bandwidth")}:
-                  </Text>
-                  <div style={{ fontWeight: 600 }}>{(item.bandwidth / 1000).toFixed(2)} Gbps</div>
-                </Col>
-                <Col span={12}>
-                  <Text type="secondary" style={{ fontSize: 13 }}>
-                    <GlobalOutlined style={{ marginRight: 6 }} />
-                    {t("table.location")}:
-                  </Text>
-                  <div style={{ fontWeight: 600 }}>{item.location}</div>
-                </Col>
-              </Row>
-
-              <Divider style={{ margin: "16px 0", borderColor: "rgba(0,0,0,0.04)" }} />
+              <div className={styles.details}>
+                <SpecStat label={t("table.cpu")} value={item.cpu} unit={t("table.cpuUnit")} />
+                <SpecStat label={t("table.memory")} value={item.memory} unit={t("table.memoryUnit")} />
+                <SpecStat label={t("table.disk")} value={item.disk} unit={t("table.diskUnit")} />
+                <SpecStat
+                  label={t("table.monthlyTraffic")}
+                  value={(item.monthlyTraffic / 1000).toFixed(2)}
+                  unit="TB"
+                  icon={<InteractionOutlined />}
+                />
+                <SpecStat
+                  label={t("table.bandwidth")}
+                  value={(item.bandwidth / 1000).toFixed(2)}
+                  unit="Gbps"
+                  icon={<ThunderboltOutlined />}
+                />
+                <SpecStat label={t("table.location")} value={item.location} icon={<GlobalOutlined />} />
+              </div>
 
               {item.remark && (
-                <div className={styles.remark}>
-                  <Text type="secondary" style={{ fontSize: 12, display: "block", marginBottom: 4 }}>
-                    {t("table.remark")}:
-                  </Text>
-                  <Text style={{ fontSize: 13 }}>{item.remark}</Text>
-                </div>
+                <>
+                  <hr className={styles.rule} />
+                  <div className={styles.remark}>
+                    <span className={styles.remarkLabel}>{t("table.remark")}</span>
+                    <span className={styles.remarkText}>{item.remark}</span>
+                  </div>
+                </>
               )}
 
-              <div className={styles.actions} style={{ marginTop: 20 }}>
+              <div className={styles.actions}>
                 {item.reviewUrl ? (
-                  <Link href={item.reviewUrl} target="_blank" className={styles.actionBtn}>
+                  <Button variant="ghost" size="middle" href={item.reviewUrl} target="_blank" rel="noopener noreferrer">
                     {t("table.reviewLink")} <ExportOutlined />
-                  </Link>
+                  </Button>
                 ) : (
-                  <Text type="secondary" className={styles.actionBtn}>
-                    {t("table.noReview")}
-                  </Text>
+                  <span className={styles.noReview}>{t("table.noReview")}</span>
                 )}
 
                 <Button
-                  type="primary"
+                  variant="primary"
                   size="large"
                   href={item.affiliateUrl}
                   target="_blank"
+                  rel="noopener noreferrer"
                   icon={<ShoppingCartOutlined />}
-                  className={styles.orderBtn}
-                  style={{
-                    background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)",
-                    border: "none",
-                    height: 48,
-                    borderRadius: 12,
-                    boxShadow: "0 4px 12px rgba(99, 102, 241, 0.4)",
-                  }}
                 >
                   {t("table.orderButton")}
                 </Button>
               </div>
-            </Card>
+            </article>
           ))}
         </div>
       )}

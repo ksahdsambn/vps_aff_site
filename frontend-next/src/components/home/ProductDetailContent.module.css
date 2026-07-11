@@ -1,0 +1,159 @@
+.section {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 24px clamp(16px, 4vw, 24px) 48px;
+}
+
+.crumb {
+  margin-bottom: 20px;
+  font-size: 0.875rem;
+}
+
+.crumb a {
+  color: var(--muted);
+  text-decoration: none;
+  transition: color var(--dur) var(--ease-out);
+}
+
+.crumb a:hover {
+  color: var(--accent);
+}
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-container);
+  padding: clamp(24px, 4vw, 36px);
+}
+
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.headLeft {
+  min-width: 0;
+}
+
+.provider {
+  display: inline-block;
+  padding: 3px 12px;
+  border-radius: 6px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  margin-bottom: 10px;
+}
+
+.title {
+  font-family: var(--font-display) !important;
+  font-weight: 600 !important;
+  font-size: clamp(1.6rem, 3.5vw, 2.2rem) !important;
+  color: var(--ink) !important;
+  margin: 0 !important;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+.priceBlock {
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.price {
+  font-family: var(--font-body);
+  font-size: clamp(1.8rem, 4vw, 2.4rem);
+  font-weight: 700;
+  color: var(--accent);
+  line-height: 1.1;
+}
+
+.currency {
+  font-size: 0.6em;
+  font-weight: 600;
+  color: var(--muted);
+  margin-left: 4px;
+}
+
+.priceLabel {
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.rule {
+  border: 0;
+  border-top: 1px solid var(--rule);
+  margin: 24px 0;
+}
+
+.sectionTitle {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0 0 20px;
+  letter-spacing: -0.01em;
+}
+
+.specGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px 20px;
+}
+
+.remarkBlock {
+  display: flex;
+  flex-direction: column;
+}
+
+.remarkLabel {
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.remarkText {
+  font-size: 0.9375rem !important;
+  color: var(--text) !important;
+  line-height: 1.7;
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.actions > :global(.ant-btn) {
+  min-width: 160px;
+}
+
+@media (max-width: 768px) {
+  .specGrid {
+    grid-template-columns: 1fr 1fr;
+    gap: 18px 16px;
+  }
+  .head {
+    flex-direction: column;
+  }
+  .priceBlock {
+    text-align: left;
+  }
+  .actions > :global(.ant-btn) {
+    flex: 1;
+    min-width: 0;
+  }
+}

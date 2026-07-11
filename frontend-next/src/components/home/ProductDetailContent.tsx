@@ -1,9 +1,8 @@
 "use client";
 
-import { Typography, Tag, Button, Divider, Row, Col } from "antd";
+import { Typography, Breadcrumb } from "antd";
 import {
   ShoppingCartOutlined,
-  ArrowLeftOutlined,
   GlobalOutlined,
   ThunderboltOutlined,
   InteractionOutlined,
@@ -12,9 +11,15 @@ import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import type { Product } from "@/lib/api";
 import type { Locale } from "@/lib/i18n";
+import SpecStat from "@/components/ui/SpecStat";
+import Button from "@/components/ui/Button";
+import styles from "./ProductDetailContent.module.css";
 
 /**
- * 产品详情内容（客户端组件）。
+ * 产品详情内容（客户端组件）—— Editorial-Data Minimal。
+ *
+ * 编辑式布局：左对齐 provider chip + Fraunces h1，右侧大号 .num 价格块。
+ * 规格走 SpecStat 网格。不透明面板 + hairline 分隔。下单/测评走共享 Button。
  * AntD 组件需 ConfigProvider 上下文，故提取为 client island。
  */
 export default function ProductDetailContent({
@@ -35,115 +40,80 @@ export default function ProductDetailContent({
   const cores = isZh ? "核" : "Cores";
 
   return (
-    <section style={{ maxWidth: 1000, margin: "0 auto", padding: "24px" }}>
-      {/* 面包屑 */}
-      <nav style={{ marginBottom: 24 }}>
-        <Link href={`/${locale}`}>
-          <Button type="text" icon={<ArrowLeftOutlined />}>
-            {back}
-          </Button>
-        </Link>
-      </nav>
+    <section className={styles.section}>
+      <Breadcrumb
+        className={styles.crumb}
+        items={[
+          { title: <Link href={`/${locale}`}>{back}</Link> },
+        ]}
+      />
 
-      <div className="glass-panel" style={{ padding: 32, borderRadius: 20, marginBottom: 24 }}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-            flexWrap: "wrap",
-            gap: 16,
-          }}
-        >
-          <div>
-            <Tag color="blue" style={{ borderRadius: 6, fontWeight: 700, marginBottom: 8 }}>
-              {product.provider}
-            </Tag>
-            <Typography.Title level={1} style={{ marginBottom: 0 }}>
+      <div className={`${styles.panel} page-enter`}>
+        <header className={styles.head}>
+          <div className={styles.headLeft}>
+            <span className={styles.provider}>{product.provider}</span>
+            <Typography.Title level={1} className={styles.title}>
               {product.name}
             </Typography.Title>
           </div>
-          <div style={{ textAlign: "right" }}>
-            <Typography.Title level={2} style={{ color: "#4f46e5", margin: 0 }}>
-              {product.price.toFixed(2)} {product.currency}
-            </Typography.Title>
-            <Typography.Text type="secondary">{priceLabel}</Typography.Text>
+          <div className={styles.priceBlock}>
+            <div className={`${styles.price} num`}>
+              {product.price.toFixed(2)}{" "}
+              <span className={styles.currency}>{product.currency}</span>
+            </div>
+            <div className={styles.priceLabel}>{priceLabel}</div>
           </div>
+        </header>
+
+        <hr className={styles.rule} />
+
+        <h2 className={styles.sectionTitle}>{specsTitle}</h2>
+        <div className={styles.specGrid}>
+          <SpecStat label={t("table.cpu")} value={product.cpu} unit={cores} />
+          <SpecStat label={t("table.memory")} value={product.memory} unit={t("table.memoryUnit")} />
+          <SpecStat label={t("table.disk")} value={product.disk} unit={t("table.diskUnit")} />
+          <SpecStat
+            label={t("table.monthlyTraffic")}
+            value={(product.monthlyTraffic / 1000).toFixed(2)}
+            unit="TB"
+            icon={<InteractionOutlined />}
+          />
+          <SpecStat
+            label={t("table.bandwidth")}
+            value={(product.bandwidth / 1000).toFixed(2)}
+            unit="Gbps"
+            icon={<ThunderboltOutlined />}
+          />
+          <SpecStat label={t("table.location")} value={product.location} icon={<GlobalOutlined />} />
         </div>
-
-        <Divider />
-
-        <Typography.Title level={2}>{specsTitle}</Typography.Title>
-        <Row gutter={[24, 24]}>
-          <Col xs={12} md={8}>
-            <Typography.Text type="secondary">{t("table.cpu")}</Typography.Text>
-            <div style={{ fontSize: 20, fontWeight: 700 }}>
-              {product.cpu} {cores}
-            </div>
-          </Col>
-          <Col xs={12} md={8}>
-            <Typography.Text type="secondary">{t("table.memory")}</Typography.Text>
-            <div style={{ fontSize: 20, fontWeight: 700 }}>{product.memory} {t("table.memoryUnit")}</div>
-          </Col>
-          <Col xs={12} md={8}>
-            <Typography.Text type="secondary">{t("table.disk")}</Typography.Text>
-            <div style={{ fontSize: 20, fontWeight: 700 }}>{product.disk} {t("table.diskUnit")}</div>
-          </Col>
-          <Col xs={12} md={8}>
-            <Typography.Text type="secondary">
-              <InteractionOutlined /> {t("table.monthlyTraffic")}
-            </Typography.Text>
-            <div style={{ fontSize: 18, fontWeight: 600 }}>
-              {(product.monthlyTraffic / 1000).toFixed(2)} TB
-            </div>
-          </Col>
-          <Col xs={12} md={8}>
-            <Typography.Text type="secondary">
-              <ThunderboltOutlined /> {t("table.bandwidth")}
-            </Typography.Text>
-            <div style={{ fontSize: 18, fontWeight: 600 }}>
-              {(product.bandwidth / 1000).toFixed(2)} Gbps
-            </div>
-          </Col>
-          <Col xs={12} md={8}>
-            <Typography.Text type="secondary">
-              <GlobalOutlined /> {t("table.location")}
-            </Typography.Text>
-            <div style={{ fontSize: 18, fontWeight: 600 }}>{product.location}</div>
-          </Col>
-        </Row>
 
         {product.remark && (
           <>
-            <Divider />
-            <Typography.Text type="secondary">{remarkLabel}:</Typography.Text>
-            <Typography.Paragraph style={{ marginTop: 8 }}>{product.remark}</Typography.Paragraph>
+            <hr className={styles.rule} />
+            <div className={styles.remarkBlock}>
+              <div className={styles.remarkLabel}>{remarkLabel}</div>
+              <Typography.Paragraph className={styles.remarkText} style={{ marginTop: 6, marginBottom: 0 }}>
+                {product.remark}
+              </Typography.Paragraph>
+            </div>
           </>
         )}
 
-        <Divider />
+        <hr className={styles.rule} />
 
-        <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+        <div className={styles.actions}>
           <Button
-            type="primary"
+            variant="primary"
             size="large"
             href={product.affiliateUrl}
             target="_blank"
             rel="noopener noreferrer"
             icon={<ShoppingCartOutlined />}
-            style={{
-              background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)",
-              border: "none",
-              height: 52,
-              borderRadius: 12,
-              fontWeight: 600,
-              boxShadow: "0 4px 12px rgba(99, 102, 241, 0.4)",
-            }}
           >
             {orderLabel}
           </Button>
           {product.reviewUrl && (
-            <Button size="large" href={product.reviewUrl} target="_blank" rel="noopener noreferrer">
+            <Button variant="ghost" size="large" href={product.reviewUrl} target="_blank" rel="noopener noreferrer">
               {reviewLabel}
             </Button>
           )}

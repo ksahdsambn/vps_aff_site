@@ -79,20 +79,29 @@ export default async function ProviderPage({ params }: ProviderPageProps) {
       <Announcement config={config} />
 
       <section style={{ maxWidth: 1400, margin: "0 auto", padding: "0 24px 48px" }}>
-        <nav style={{ marginBottom: 24 }}>
-          <Link href={`/${locale}`} className="ant-btn ant-btn-text">
+        <nav style={{ marginBottom: 20 }}>
+          <Link href={`/${locale}`} style={{ color: "var(--muted)", textDecoration: "none", fontSize: "0.875rem" }}>
             <span role="img" aria-label="back">←</span> {back}
           </Link>
         </nav>
 
-        <div style={{ marginBottom: 24 }}>
-          <h1 style={{ fontSize: "2rem", fontWeight: 700, color: "#0f172a", margin: 0 }}>
-            <span style={{ color: "#6366f1" }}>{providerLabel}:</span> {name}
+        <div style={{ marginBottom: 20 }}>
+          <h1
+            style={{
+              fontFamily: "var(--font-display)",
+              fontSize: "clamp(1.6rem, 3.5vw, 2.1rem)",
+              fontWeight: 600,
+              color: "var(--ink)",
+              margin: 0,
+              letterSpacing: "-0.02em",
+            }}
+          >
+            <span style={{ color: "var(--accent)" }}>{providerLabel}:</span> {name}
           </h1>
-          <p style={{ color: "#64748b", marginTop: 8 }}>{productsCount}</p>
+          <p style={{ color: "var(--muted)", marginTop: 8, fontSize: "0.875rem" }}>{productsCount}</p>
         </div>
 
-        <div className="glass-panel" style={{ padding: 24, borderRadius: 20, overflow: "hidden" }}>
+        <div className="surface page-enter" style={{ padding: 0, overflow: "hidden" }}>
           <ProviderProductsTable products={products} locale={locale} />
         </div>
       </section>

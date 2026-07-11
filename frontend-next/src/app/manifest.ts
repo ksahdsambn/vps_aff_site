@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { SITE_URL, SITE_NAME } from "@/lib/seo";
+import { SITE_NAME } from "@/lib/seo";
 
 /**
  * PWA manifest。
@@ -11,8 +11,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "全球 VPS 服务器价格对比与推荐",
     start_url: "/zh",
     display: "standalone",
-    background_color: "#f5f7ff",
-    theme_color: "#6366f1",
+    background_color: "#faf9f7",
+    theme_color: "#4338ca",
     icons: [
       {
         src: "/favicon.svg",

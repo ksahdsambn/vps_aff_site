@@ -1,0 +1,44 @@
+.btn {
+  /* 44px 最小点击区域（AGENTS.md tap-target） */
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+/* primary: 实色 accent，由 AntD colorPrimary 提供 #4338ca；这里只收口边框/阴影 */
+.primary {
+  border: none;
+}
+
+.primary:global(.ant-btn-primary:not(:disabled)) {
+  background: var(--accent);
+}
+
+/* ghost: 透明底 + accent 边框，次操作 */
+.ghost {
+  background: transparent;
+  border: 1px solid var(--rule-strong);
+  color: var(--ink);
+}
+
+.ghost:hover {
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+  background: var(--accent-soft) !important;
+}
+
+/* text: 纯文字链接 */
+.text {
+  background: transparent;
+  border: none;
+  color: var(--accent);
+  padding-inline: 8px;
+}
+
+.text:hover {
+  color: var(--accent-hover) !important;
+  background: var(--accent-soft) !important;
+}

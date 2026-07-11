@@ -98,37 +98,68 @@ export default async function PrivacyPage({ params }: PrivacyPageProps) {
       <Header config={config} locale={locale} asH1={false} />
       <Announcement config={config} />
 
-      <section style={{ maxWidth: 800, margin: "0 auto", padding: "24px 24px 48px" }}>
-        <h1 style={{ fontSize: "2rem", fontWeight: 700, color: "#0f172a", marginBottom: 16 }}>
+      <section style={{ maxWidth: 720, margin: "0 auto", padding: "32px 24px 48px" }}>
+        <div className="eyebrow" style={{ marginBottom: 8 }}>
+          {isZh ? "法律声明" : "Legal"}
+        </div>
+        <h1
+          style={{
+            fontFamily: "var(--font-display)",
+            fontSize: "clamp(1.8rem, 4vw, 2.4rem)",
+            fontWeight: 600,
+            color: "var(--ink)",
+            marginBottom: 16,
+            letterSpacing: "-0.02em",
+          }}
+        >
           {t.title}
         </h1>
-        <p style={{ color: "#64748b", marginBottom: 32 }}>{t.intro}</p>
+        <p style={{ color: "var(--muted)", marginBottom: 36, fontSize: "1rem", lineHeight: 1.7 }}>
+          {t.intro}
+        </p>
 
         {t.sections.map((section, idx) => (
-          <div key={idx} style={{ marginBottom: 28 }}>
-            <h2 style={{ fontSize: "1.25rem", fontWeight: 600, color: "#1e293b", marginBottom: 8 }}>
+          <div key={idx} style={{ marginBottom: 32 }}>
+            <h2
+              style={{
+                fontFamily: "var(--font-display)",
+                fontSize: "1.2rem",
+                fontWeight: 600,
+                color: "var(--ink)",
+                marginBottom: 8,
+                letterSpacing: "-0.01em",
+              }}
+            >
               {section.heading}
             </h2>
-            <p style={{ color: "#475569", lineHeight: 1.8 }}>{section.body}</p>
+            <p style={{ color: "var(--text)", lineHeight: 1.8, fontSize: "0.9375rem" }}>
+              {section.body}
+            </p>
           </div>
         ))}
 
-        <div style={{ marginTop: 40 }}>
-          <Link
-            href={`/${locale}`}
-            style={{
-              display: "inline-block",
-              padding: "12px 28px",
-              borderRadius: 12,
-              background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)",
-              color: "#fff",
-              textDecoration: "none",
-              fontWeight: 600,
-            }}
-          >
-            {t.back}
-          </Link>
-        </div>
+        <hr style={{ border: 0, borderTop: "1px solid var(--rule)", margin: "32px 0" }} />
+
+        <Link
+          href={`/${locale}`}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            padding: "10px 22px",
+            minHeight: 44,
+            borderRadius: 8,
+            background: "transparent",
+            border: "1px solid var(--rule-strong)",
+            color: "var(--ink)",
+            textDecoration: "none",
+            fontWeight: 600,
+            fontSize: "0.9rem",
+            transition: "border-color var(--dur) var(--ease-out), color var(--dur) var(--ease-out), background var(--dur) var(--ease-out)",
+          }}
+        >
+          <span aria-hidden="true">←</span> {t.back}
+        </Link>
       </section>
 
       <Footer config={config} locale={locale} />

@@ -1,11 +1,12 @@
 "use client";
 
 import React from "react";
-import { Table, Tooltip, Button, Typography, Tag } from "antd";
+import { Table, Tooltip, Typography } from "antd";
 import type { ColumnsType, TableProps } from "antd/es/table";
 import { useTranslation } from "react-i18next";
 import { QuestionCircleOutlined, ShoppingCartOutlined } from "@ant-design/icons";
 import type { Product } from "@/lib/api";
+import Button from "@/components/ui/Button";
 
 const { Text } = Typography;
 
@@ -21,42 +22,46 @@ interface ProductTableProps {
 }
 
 /**
- * 桌面端产品表格（客户端组件）。
+ * 桌面端产品表格（客户端组件）—— Editorial-Data Minimal。
  *
- * 从旧前端迁移：移除 window.__PRERENDER_INJECTED 检测。
- * 接收服务端 SSG 预取的初始产品数据作为首帧内容（爬虫可见），筛选/排序/分页走客户端。
+ * 不透明面板 + hairline 边框（无 glass-panel）。数值列用 .num（tabular-nums）对齐。
+ * 服务商为实色 chip（accent-soft 底），价格为 accent 实色，下单按钮走共享 Button。
+ * 接收服务端 SSG 预取的初始产品数据作为首帧内容（爬虫可见）。
  */
 const ProductTable: React.FC<ProductTableProps> = ({ data, loading, pagination, onChange }) => {
   const { t } = useTranslation();
-  const [isMobile, setIsMobile] = React.useState(false);
-
-  React.useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 768);
-    handleResize();
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
 
   const columns: ColumnsType<Product> = [
     {
       title: t("table.provider"),
       dataIndex: "provider",
       key: "provider",
-      width: 100,
+      width: 110,
       render: (text) => (
-        <Tag color="blue" style={{ borderRadius: 6, fontWeight: 600, padding: "2px 10px" }}>
+        <span
+          style={{
+            display: "inline-block",
+            padding: "2px 10px",
+            borderRadius: 6,
+            background: "var(--accent-soft)",
+            color: "var(--accent)",
+            fontSize: 12,
+            fontWeight: 600,
+            lineHeight: "20px",
+          }}
+        >
           {text}
-        </Tag>
+        </span>
       ),
     },
     {
       title: t("table.name"),
       dataIndex: "name",
       key: "name",
-      width: 150,
+      width: 160,
       ellipsis: true,
       render: (text) => (
-        <Text strong style={{ color: "#475569" }}>
+        <Text strong style={{ color: "var(--ink)" }}>
           {text}
         </Text>
       ),
@@ -66,11 +71,11 @@ const ProductTable: React.FC<ProductTableProps> = ({ data, loading, pagination, 
       dataIndex: "cpu",
       key: "cpu",
       sorter: true,
-      width: 80,
+      width: 90,
       render: (val: number) => (
-        <Text style={{ fontSize: 13 }}>
+        <span className="num" style={{ fontSize: 13, color: "var(--text)" }}>
           {val} {t("table.cpuUnit")}
-        </Text>
+        </span>
       ),
     },
     {
@@ -78,11 +83,11 @@ const ProductTable: React.FC<ProductTableProps> = ({ data, loading, pagination, 
       dataIndex: "memory",
       key: "memory",
       sorter: true,
-      width: 80,
+      width: 90,
       render: (val: number) => (
-        <Text style={{ fontSize: 13 }}>
+        <span className="num" style={{ fontSize: 13, color: "var(--text)" }}>
           {val} {t("table.memoryUnit")}
-        </Text>
+        </span>
       ),
     },
     {
@@ -90,54 +95,64 @@ const ProductTable: React.FC<ProductTableProps> = ({ data, loading, pagination, 
       dataIndex: "disk",
       key: "disk",
       sorter: true,
-      width: 80,
+      width: 90,
       render: (val: number) => (
-        <Text style={{ fontSize: 13 }}>
+        <span className="num" style={{ fontSize: 13, color: "var(--text)" }}>
           {val} {t("table.diskUnit")}
-        </Text>
+        </span>
       ),
     },
     {
       title: t("table.monthlyTraffic"),
       dataIndex: "monthlyTraffic",
       key: "monthlyTraffic",
-      width: 100,
+      width: 110,
       sorter: true,
-      render: (val: number) => <Tag color="cyan">{(val / 1000).toFixed(2)} TB</Tag>,
+      render: (val: number) => (
+        <span
+          className="num"
+          style={{ fontSize: 13, color: "var(--text)" }}
+        >
+          {(val / 1000).toFixed(2)} TB
+        </span>
+      ),
     },
     {
       title: t("table.bandwidth"),
       dataIndex: "bandwidth",
       key: "bandwidth",
-      width: 100,
+      width: 110,
       sorter: true,
       render: (val: number) => (
-        <Text strong style={{ color: "#0ea5e9" }}>
+        <span className="num" style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>
           {(val / 1000).toFixed(2)} Gbps
-        </Text>
+        </span>
       ),
     },
     {
       title: t("table.location"),
       dataIndex: "location",
       key: "location",
-      width: 80,
+      width: 100,
+      render: (text: string) => (
+        <span style={{ fontSize: 13, color: "var(--text)" }}>{text}</span>
+      ),
     },
     {
       title: (
         <span>
           {t("table.price")}
           <Tooltip title={t("table.priceSortTip")}>
-            <QuestionCircleOutlined style={{ marginLeft: 4 }} />
+            <QuestionCircleOutlined style={{ marginLeft: 4, color: "var(--muted)" }} />
           </Tooltip>
         </span>
       ),
       dataIndex: "price",
       key: "price",
-      width: 120,
+      width: 130,
       sorter: true,
       render: (val: number, record: Product) => (
-        <span style={{ fontSize: 16, fontWeight: 700, color: "#4f46e5" }}>
+        <span className="num" style={{ fontSize: 16, fontWeight: 700, color: "var(--accent)" }}>
           {val.toFixed(2)} {record.currency}
         </span>
       ),
@@ -145,26 +160,16 @@ const ProductTable: React.FC<ProductTableProps> = ({ data, loading, pagination, 
     {
       title: t("table.order"),
       key: "order",
-      width: 100,
+      width: 110,
+      align: "center" as const,
       render: (_, record: Product) => (
         <Button
-          type="primary"
+          variant="primary"
+          size="middle"
           href={record.affiliateUrl}
           target="_blank"
           rel="noopener noreferrer"
           icon={<ShoppingCartOutlined />}
-          style={{
-            borderRadius: 6,
-            background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)",
-            border: "none",
-            boxShadow: "0 4px 6px -1px rgba(99, 102, 241, 0.4)",
-            fontSize: 12,
-            fontWeight: 600,
-            height: 28,
-            padding: "0 12px",
-            display: "inline-flex",
-            alignItems: "center",
-          }}
         >
           {t("table.orderButton")}
         </Button>
@@ -174,12 +179,10 @@ const ProductTable: React.FC<ProductTableProps> = ({ data, loading, pagination, 
 
   return (
     <div
-      className="glass-panel"
+      className="surface page-enter"
       style={{
-        padding: isMobile ? 12 : 24,
-        borderRadius: 20,
-        margin: isMobile ? "0 12px 24px" : "0 24px 24px",
-        boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -4px rgba(0, 0, 0, 0.05)",
+        padding: 0,
+        margin: "0 0 24px",
         overflow: "hidden",
       }}
     >
@@ -197,10 +200,6 @@ const ProductTable: React.FC<ProductTableProps> = ({ data, loading, pagination, 
         }}
         onChange={onChange}
         scroll={{ x: "max-content" }}
-        className="modern-table"
-        onRow={(_, index) => ({
-          className: `stagger-item stagger-delay-${((index ?? 0) % 10) + 1}`,
-        })}
       />
     </div>
   );

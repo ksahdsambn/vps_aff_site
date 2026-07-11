@@ -85,8 +85,8 @@ export default function AdminAnnouncementPage() {
         <div
           style={{
             padding: 16,
-            background: "#fffbe6",
-            border: "1px solid #ffe58f",
+            background: "var(--surface-alt)",
+            border: "1px solid var(--rule)",
             borderRadius: 8,
             minHeight: 450,
           }}
@@ -94,7 +94,7 @@ export default function AdminAnnouncementPage() {
           {content ? (
             <ReactMarkdown {...markdownOptions}>{content}</ReactMarkdown>
           ) : (
-            <div style={{ color: "#999" }}>No announcement content</div>
+            <div style={{ color: "var(--muted)" }}>No announcement content</div>
           )}
         </div>
       </Col>

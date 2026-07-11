@@ -2,12 +2,10 @@ import Link from "next/link";
 import { resolveLocale } from "@/lib/i18n";
 
 /**
- * [locale] 段内 404 页面。
+ * [locale] 段内 404 页面 —— Editorial-Data Minimal。
  *
- * 当 notFound() 在 [locale] 段内被调用（无效 locale / 不存在的产品/服务商）时，
- * 渲染此页面而非根级 not-found.tsx，使 404 页面带有正确的 locale 上下文
- * （I18nextProvider + AntD ConfigProvider 已由 [locale]/layout.tsx 注入）。
- *
+ * 当 notFound() 在 [locale] 段内被调用（无效 locale / 不存在产品/服务商）时，
+ * 渲染此页面而非根级 not-found.tsx，使 404 页面带有正确的 locale 上下文。
  * 使用原生 HTML（与根 404 一致），避免在 not-found 特殊环境中引入额外依赖。
  *
  * 注意：Next.js 预渲染 not-found 页面时 params 可能为 undefined，
@@ -38,26 +36,49 @@ export default async function LocaleNotFound({
         alignItems: "center",
         textAlign: "center",
         padding: 48,
-        fontFamily: "'Inter', 'Noto Sans SC', system-ui, sans-serif",
+        fontFamily: "var(--font-body), system-ui, sans-serif",
       }}
     >
-      <h1 style={{ fontSize: "5rem", margin: 0, color: "#6366f1", fontWeight: 800 }}>
+      <h1
+        style={{
+          fontFamily: "var(--font-display), Georgia, serif",
+          fontSize: "clamp(4rem, 14vw, 6rem)",
+          margin: 0,
+          color: "var(--accent)",
+          fontWeight: 600,
+          lineHeight: 1,
+          letterSpacing: "-0.04em",
+        }}
+      >
         404
       </h1>
-      <h2 style={{ marginTop: 0, color: "#0f172a" }}>{title}</h2>
-      <p style={{ color: "#64748b", fontSize: 16, lineHeight: 1.8 }}>{desc}</p>
+      <h2
+        style={{
+          fontFamily: "var(--font-display), Georgia, serif",
+          marginTop: 16,
+          marginBottom: 12,
+          color: "var(--ink)",
+          fontSize: "1.4rem",
+          fontWeight: 600,
+        }}
+      >
+        {title}
+      </h2>
+      <p style={{ color: "var(--muted)", fontSize: 16, lineHeight: 1.8, marginBottom: 28 }}>{desc}</p>
       <Link
         href={`/${locale}`}
         style={{
-          display: "inline-block",
-          marginTop: 16,
-          padding: "14px 32px",
-          borderRadius: 12,
-          background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)",
-          color: "#fff",
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          minHeight: 44,
+          padding: "0 28px",
+          borderRadius: 8,
+          background: "var(--accent)",
+          color: "var(--accent-contrast)",
           textDecoration: "none",
           fontWeight: 600,
-          fontSize: 16,
+          fontSize: "0.9375rem",
         }}
       >
         {backHome}

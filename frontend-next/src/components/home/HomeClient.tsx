@@ -156,39 +156,37 @@ const HomeClient: React.FC<HomeClientProps> = ({
   void locale;
 
   return (
-    <>
-      <section
-        aria-label={t("filter.provider")}
-        style={{
-          maxWidth: 1400,
-          margin: "0 auto",
-          position: "relative",
-          zIndex: 1,
-          padding: isSmallScreen ? "0 12px" : "0 24px",
-        }}
-      >
-        <FilterBar onFilterChange={handleFilterChange} initialProviders={initialProviders} />
+    <section
+      aria-label={t("filter.provider")}
+      style={{
+        maxWidth: 1400,
+        margin: "0 auto",
+        position: "relative",
+        zIndex: 1,
+        padding: isSmallScreen ? "0 12px" : "0 24px",
+      }}
+    >
+      <FilterBar onFilterChange={handleFilterChange} initialProviders={initialProviders} />
 
-        {loading ? (
-          <ProductSkeleton viewMode={isSmallScreen ? "card" : "table"} />
-        ) : isSmallScreen ? (
-          <ProductCardList
-            data={products}
-            loading={loading}
-            pagination={pagination}
-            onSortChange={handleCardSortChange}
-            onPageChange={handleCardPageChange}
-          />
-        ) : (
-          <ProductTable
-            data={products}
-            loading={loading}
-            pagination={pagination}
-            onChange={handleTableChange}
-          />
-        )}
-      </section>
-    </>
+      {loading ? (
+        <ProductSkeleton viewMode={isSmallScreen ? "card" : "table"} />
+      ) : isSmallScreen ? (
+        <ProductCardList
+          data={products}
+          loading={loading}
+          pagination={pagination}
+          onSortChange={handleCardSortChange}
+          onPageChange={handleCardPageChange}
+        />
+      ) : (
+        <ProductTable
+          data={products}
+          loading={loading}
+          pagination={pagination}
+          onChange={handleTableChange}
+        />
+      )}
+    </section>
   );
 };
 

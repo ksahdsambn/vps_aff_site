@@ -1,6 +1,6 @@
 "use client";
 
-import { Layout, Menu, Button } from "antd";
+import { Layout, Menu } from "antd";
 import {
   AppstoreOutlined,
   NotificationOutlined,
@@ -9,15 +9,17 @@ import {
 } from "@ant-design/icons";
 import { useRouter, usePathname } from "next/navigation";
 import { adminLogout } from "@/lib/api";
+import Button from "@/components/ui/Button";
 
 const { Header, Sider, Content } = Layout;
 
 /**
- * Admin 外壳（Sider + Header + Content）。
+ * Admin 外壳（Sider + Header + Content）—— Editorial-Data Minimal。
  *
- * 从旧前端 AdminLayout.tsx 迁移：
- * - react-router 的 useNavigate/useLocation/Outlet 改为 Next.js useRouter/usePathname/children。
- * - Menu 选中项由当前 pathname 决定。
+ * AGENTS.md 明确要求 admin 区更冷静、更实用：无弹跳/玻璃态。
+ * - Sider：不透明深色平面（var(--ink) 实色，无渐变）。
+ * - Header：不透明白底 + hairline 底边（无 backdrop-filter）。
+ * - Content：不透明白卡 + hairline 边框（无 springFadeIn 弹跳）。
  */
 export default function AdminShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -60,78 +62,75 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       .sort((a, b) => b.length - a.length)[0] || "/admin/products";
 
   return (
-    <Layout style={{ minHeight: "100vh", background: "#f8fafc" }}>
+    <Layout style={{ minHeight: "100vh", background: "var(--paper)" }}>
       <Sider
         breakpoint="lg"
         collapsedWidth="0"
+        width={232}
         style={{
-          background: "linear-gradient(180deg, #1e293b 0%, #0f172a 100%)",
-          boxShadow: "4px 0 10px rgba(0,0,0,0.05)",
+          background: "var(--ink)",
+          // 深色侧栏与浅色内容之间用半透明白色细线分隔（深底上的 hairline）。
+          borderRight: "1px solid rgba(255,255,255,0.08)",
         }}
       >
         <div
           style={{
             height: 64,
-            margin: "16px 20px",
-            background: "rgba(255, 255, 255, 0.05)",
-            borderRadius: 12,
             display: "flex",
             alignItems: "center",
-            justifyContent: "center",
+            paddingLeft: 24,
             color: "#fff",
-            fontWeight: 800,
-            fontSize: "1.1rem",
-            letterSpacing: "1px",
-            border: "1px solid rgba(255, 255, 255, 0.1)",
+            fontFamily: "var(--font-display)",
+            fontWeight: 600,
+            fontSize: "1.05rem",
+            letterSpacing: "0.02em",
+            borderBottom: "1px solid rgba(255,255,255,0.08)",
           }}
         >
           NAVIGATOR
         </div>
         <Menu
+          // theme="dark" 使用 AntD 内置深色菜单调色板（hover/selected 配色）。
+          // 注意：theme.ts 的 Menu.* token 仅对 theme="light" 生效；此处有意用
+          // dark，让菜单与 --ink 侧栏协调。暗色菜单的强调色由 AntD 派生自
+          // colorPrimary（#4338ca），与设计系统一致。
           theme="dark"
           mode="inline"
           selectedKeys={[selectedKey]}
           items={menuItems}
-          style={{ background: "transparent", border: "none" }}
+          style={{ background: "transparent", border: "none", paddingTop: 8 }}
         />
       </Sider>
       <Layout style={{ background: "transparent" }}>
         <Header
           style={{
-            padding: "0 32px",
-            background: "rgba(255, 255, 255, 0.8)",
-            backdropFilter: "blur(10px)",
+            padding: "0 24px",
+            background: "var(--surface)",
             display: "flex",
             justifyContent: "flex-end",
             alignItems: "center",
-            borderBottom: "1px solid #e2e8f0",
-            height: 72,
+            borderBottom: "1px solid var(--rule)",
+            height: 60,
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
-            <span style={{ fontWeight: 600, color: "#475569" }}>Admin Panel</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+            <span style={{ fontSize: "0.875rem", color: "var(--muted)" }}>Admin Panel</span>
             <Button
-              type="primary"
-              danger
-              ghost
+              variant="ghost"
+              size="middle"
               icon={<LogoutOutlined />}
               onClick={handleLogout}
-              style={{ borderRadius: 8 }}
             >
               Logout
             </Button>
           </div>
         </Header>
-        <Content style={{ margin: "24px", overflow: "initial" }}>
+        <Content style={{ margin: 24, overflow: "initial" }}>
           <div
+            className="surface"
             style={{
-              padding: 32,
-              background: "#ffffff",
-              borderRadius: 20,
+              padding: 28,
               minHeight: 360,
-              boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05)",
-              border: "1px solid #f1f5f9",
-              animation: "springFadeIn 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)",
             }}
           >
             {children}

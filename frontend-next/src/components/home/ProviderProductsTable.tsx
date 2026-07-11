@@ -1,16 +1,18 @@
 "use client";
 
-import { Table, Tag, Button, Typography, Tooltip } from "antd";
+import { Table, Typography, Tooltip } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useTranslation } from "react-i18next";
 import { QuestionCircleOutlined, ShoppingCartOutlined } from "@ant-design/icons";
 import Link from "next/link";
 import type { Product } from "@/lib/api";
 import type { Locale } from "@/lib/i18n";
+import Button from "@/components/ui/Button";
 
 /**
- * 服务商聚合页的产品表格（客户端组件）。
+ * 服务商聚合页的产品表格（客户端组件）—— Editorial-Data Minimal。
  * AntD Table 需要 ConfigProvider 上下文，故提取为 client island。
+ * 样式与桌面端 ProductTable 一致：不透明面板、tabular-nums、实色 chip、共享 Button。
  */
 export default function ProviderProductsTable({
   products,
@@ -27,8 +29,8 @@ export default function ProviderProductsTable({
       dataIndex: "name",
       key: "name",
       render: (text, record) => (
-        <Link href={`/${locale}/products/${record.id}`}>
-          <Typography.Text strong style={{ color: "#475569" }}>
+        <Link href={`/${locale}/products/${record.id}`} className="name-link">
+          <Typography.Text strong style={{ color: "var(--ink)" }}>
             {text}
           </Typography.Text>
         </Link>
@@ -38,65 +40,80 @@ export default function ProviderProductsTable({
       title: t("table.cpu"),
       dataIndex: "cpu",
       key: "cpu",
-      width: 80,
+      width: 90,
       render: (val: number) => (
-        <Typography.Text style={{ fontSize: 13 }}>
+        <span className="num" style={{ fontSize: 13, color: "var(--text)" }}>
           {val} {t("table.cpuUnit")}
-        </Typography.Text>
+        </span>
       ),
     },
     {
       title: t("table.memory"),
       dataIndex: "memory",
       key: "memory",
-      width: 80,
-      render: (val: number) => <Typography.Text style={{ fontSize: 13 }}>{val} {t("table.memoryUnit")}</Typography.Text>,
+      width: 90,
+      render: (val: number) => (
+        <span className="num" style={{ fontSize: 13, color: "var(--text)" }}>
+          {val} {t("table.memoryUnit")}
+        </span>
+      ),
     },
     {
       title: t("table.disk"),
       dataIndex: "disk",
       key: "disk",
-      width: 80,
-      render: (val: number) => <Typography.Text style={{ fontSize: 13 }}>{val} {t("table.diskUnit")}</Typography.Text>,
+      width: 90,
+      render: (val: number) => (
+        <span className="num" style={{ fontSize: 13, color: "var(--text)" }}>
+          {val} {t("table.diskUnit")}
+        </span>
+      ),
     },
     {
       title: t("table.monthlyTraffic"),
       dataIndex: "monthlyTraffic",
       key: "monthlyTraffic",
-      width: 100,
-      render: (val: number) => <Tag color="cyan">{(val / 1000).toFixed(2)} TB</Tag>,
+      width: 110,
+      render: (val: number) => (
+        <span className="num" style={{ fontSize: 13, color: "var(--text)" }}>
+          {(val / 1000).toFixed(2)} TB
+        </span>
+      ),
     },
     {
       title: t("table.bandwidth"),
       dataIndex: "bandwidth",
       key: "bandwidth",
-      width: 100,
+      width: 110,
       render: (val: number) => (
-        <Typography.Text strong style={{ color: "#0ea5e9" }}>
+        <span className="num" style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>
           {(val / 1000).toFixed(2)} Gbps
-        </Typography.Text>
+        </span>
       ),
     },
     {
       title: t("table.location"),
       dataIndex: "location",
       key: "location",
-      width: 80,
+      width: 100,
+      render: (text: string) => (
+        <span style={{ fontSize: 13, color: "var(--text)" }}>{text}</span>
+      ),
     },
     {
       title: (
         <span>
           {t("table.price")}
           <Tooltip title={t("table.priceSortTip")}>
-            <QuestionCircleOutlined style={{ marginLeft: 4 }} />
+            <QuestionCircleOutlined style={{ marginLeft: 4, color: "var(--muted)" }} />
           </Tooltip>
         </span>
       ),
       dataIndex: "price",
       key: "price",
-      width: 120,
+      width: 130,
       render: (val: number, record: Product) => (
-        <span style={{ fontSize: 16, fontWeight: 700, color: "#4f46e5" }}>
+        <span className="num" style={{ fontSize: 16, fontWeight: 700, color: "var(--accent)" }}>
           {val.toFixed(2)} {record.currency}
         </span>
       ),
@@ -104,23 +121,16 @@ export default function ProviderProductsTable({
     {
       title: t("table.order"),
       key: "order",
-      width: 100,
+      width: 110,
+      align: "center" as const,
       render: (_, record: Product) => (
         <Button
-          type="primary"
+          variant="primary"
+          size="middle"
           href={record.affiliateUrl}
           target="_blank"
           rel="noopener noreferrer"
           icon={<ShoppingCartOutlined />}
-          style={{
-            borderRadius: 6,
-            background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)",
-            border: "none",
-            fontSize: 12,
-            fontWeight: 600,
-            height: 28,
-            padding: "0 12px",
-          }}
         >
           {t("table.orderButton")}
         </Button>

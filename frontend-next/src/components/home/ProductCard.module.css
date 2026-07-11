@@ -1,5 +1,5 @@
 .container {
-  padding: 0 12px 24px;
+  padding: 0 0 24px;
 }
 
 .sortHeader {
@@ -11,107 +11,129 @@
 }
 
 .sortLabel {
-  font-size: 14px;
-  color: #595959;
+  font-size: 0.875rem;
+  color: var(--muted);
 }
 
 .cardList {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 24px;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
 }
 
 .card {
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-  background: rgba(255, 255, 255, 0.7) !important;
-  backdrop-filter: blur(8px);
-  overflow: hidden;
-  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1) !important;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-card);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  transition: border-color var(--dur) var(--ease-out),
+    background-color var(--dur) var(--ease-out),
+    box-shadow var(--dur) var(--ease-out);
 }
 
 .card:hover {
-  transform: translateY(-8px) scale(1.02);
-  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1) !important;
-  border-color: var(--primary-color);
-  background: rgba(255, 255, 255, 0.95) !important;
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: 0 1px 2px 0 rgba(26, 29, 41, 0.04),
+    0 4px 12px -4px rgba(67, 56, 202, 0.12);
 }
 
 .cardHeader {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 6px;
 }
 
 .provider {
-  font-size: 1.1rem;
-  letter-spacing: -0.01e;
-  color: var(--primary-color);
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 6px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 0.75rem;
   font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 20px;
 }
 
 .price {
-  font-size: 1.25rem;
-  font-weight: 800;
-  color: #0f172a;
   display: flex;
-  align-items: center;
+  align-items: baseline;
+  gap: 4px;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.priceUnit {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .name {
-  font-size: 1rem;
-  color: var(--text-secondary);
-  margin-bottom: 8px;
+  font-size: 0.9375rem;
+  color: var(--text);
   font-weight: 600;
+  margin-bottom: 4px;
+  line-height: 1.4;
+}
+
+.rule {
+  border: 0;
+  border-top: 1px solid var(--rule);
+  margin: 14px 0;
 }
 
 .details {
-  font-size: 0.875rem;
-  line-height: 1.8;
-}
-
-.details :global(.ant-typography-secondary) {
-  font-weight: 500;
-  color: #94a3b8;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 16px;
 }
 
 .remark {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.remarkLabel {
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.remarkText {
   font-size: 0.8125rem;
-  margin: 12px 0;
-  padding: 10px 14px;
-  background: rgba(99, 102, 241, 0.05);
-  border-left: 4px solid var(--primary-color);
-  border-radius: 6px;
-  color: var(--text-secondary);
+  color: var(--text);
+  line-height: 1.5;
 }
 
 .actions {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
+  margin-top: 16px;
 }
 
-.actionBtn {
-  font-size: 14px;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 10px; 
-  min-width: 44px;
-  min-height: 44px;
-  justify-content: center;
-}
-
-.orderBtn {
+.actions > :global(.ant-btn) {
   flex: 1;
-  font-weight: 600;
-  min-height: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+}
+
+.noReview {
+  font-size: 0.8125rem;
+  color: var(--muted);
+  flex: 1;
 }
 
 .pagination {
@@ -120,8 +142,9 @@
   justify-content: center;
 }
 
-.empty {
-  text-align: center;
-  padding: 40px 0;
-  color: #bfbfbf;
+.emptyWrap {
+  padding: 60px 0;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-container);
 }

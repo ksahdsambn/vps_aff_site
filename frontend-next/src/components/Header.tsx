@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { Space, Typography } from "antd";
+import { Space } from "antd";
 import {
   SendOutlined,
   YoutubeOutlined,
@@ -14,8 +14,6 @@ import styles from "./Header.module.css";
 import LanguageSwitcher from "./LanguageSwitcher";
 import type { FrontendConfig } from "@/lib/api";
 import type { Locale } from "@/lib/i18n";
-
-const { Title } = Typography;
 
 interface HeaderProps {
   config?: FrontendConfig | null;
@@ -29,10 +27,10 @@ interface HeaderProps {
 }
 
 /**
- * 公共页头。
+ * 公共页头 —— Editorial-Data Minimal。
  *
- * 从旧前端 Header.tsx 迁移，语言切换改为 LanguageSwitcher（URL 路由跳转）。
- * 标题层级由 asH1 控制：首页 h1，详情/聚合页用 div 避免双 h1。
+ * 不透明白底 + 暖色 hairline 底边（无 backdrop-filter）。站点标题用 Fraunces（display），
+ * 通过 CSS module 的 .title 控制；语义层级由 asH1 决定（首页 h1，其余 div）。
  */
 const Header: React.FC<HeaderProps> = ({ config, locale, asH1 = true }) => {
   const { i18n } = useTranslation();
@@ -54,17 +52,13 @@ const Header: React.FC<HeaderProps> = ({ config, locale, asH1 = true }) => {
             alt="VPS Navi Logo"
             className={styles.logo}
             width={120}
-            height={32}
+            height={28}
           />
         )}
         {asH1 ? (
-          <Title level={1} className={styles.title}>
-            {titleContent}
-          </Title>
+          <h1 className={styles.title}>{titleContent}</h1>
         ) : (
-          <div className={styles.title} style={{ fontSize: "1.5rem", fontWeight: 700, margin: 0 }}>
-            {titleContent}
-          </div>
+          <div className={styles.title}>{titleContent}</div>
         )}
       </div>
 
@@ -72,22 +66,22 @@ const Header: React.FC<HeaderProps> = ({ config, locale, asH1 = true }) => {
         <nav aria-label="Social links">
           <Space className={styles.socialIcons}>
             {config?.link_telegram && (
-              <a href={config.link_telegram} target="_blank" rel="noopener noreferrer">
+              <a href={config.link_telegram} target="_blank" rel="noopener noreferrer" aria-label="Telegram">
                 <SendOutlined className={styles.icon} />
               </a>
             )}
             {config?.link_youtube && (
-              <a href={config.link_youtube} target="_blank" rel="noopener noreferrer">
+              <a href={config.link_youtube} target="_blank" rel="noopener noreferrer" aria-label="YouTube">
                 <YoutubeOutlined className={styles.icon} />
               </a>
             )}
             {config?.link_blog && (
-              <a href={config.link_blog} target="_blank" rel="noopener noreferrer">
+              <a href={config.link_blog} target="_blank" rel="noopener noreferrer" aria-label="Blog">
                 <ReadOutlined className={styles.icon} />
               </a>
             )}
             {config?.link_x && (
-              <a href={config.link_x} target="_blank" rel="noopener noreferrer">
+              <a href={config.link_x} target="_blank" rel="noopener noreferrer" aria-label="X">
                 <TwitterOutlined className={styles.icon} />
               </a>
             )}

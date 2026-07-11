@@ -62,46 +62,6 @@ export default async function LocaleHomePage({ params }: HomePageProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: safeJsonLd(productGraphJsonLd) }}
       />
-      {/* 动态装饰背景 */}
-      <div
-        className="interactive-bg"
-        style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          zIndex: -1,
-          pointerEvents: "none",
-        }}
-      >
-        <div
-          style={{
-            position: "absolute",
-            top: "-10%",
-            right: "-10%",
-            width: "50%",
-            height: "50%",
-            background: "radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, transparent 70%)",
-            borderRadius: "50%",
-            filter: "blur(80px)",
-            animation: "float 15s infinite ease-in-out",
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            bottom: "5%",
-            left: "-5%",
-            width: "40%",
-            height: "40%",
-            background: "radial-gradient(circle, rgba(139, 92, 246, 0.12) 0%, transparent 70%)",
-            borderRadius: "50%",
-            filter: "blur(70px)",
-            animation: "float 18s infinite ease-in-out reverse",
-          }}
-        />
-      </div>
 
       <Header config={config} locale={locale} />
       <Announcement config={config} />

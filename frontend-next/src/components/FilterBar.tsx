@@ -93,15 +93,7 @@ const FilterBar: React.FC<FilterBarProps> = ({ onFilterChange, initialProviders 
   };
 
   const filterContent = (
-    <div
-      className={`${isMobile ? styles.mobileContent : styles.desktopContent} glass-panel`}
-      style={{
-        padding: "20px 24px",
-        borderRadius: 20,
-        marginBottom: 24,
-        border: "1px solid rgba(255, 255, 255, 0.6)",
-      }}
-    >
+    <div className={isMobile ? styles.mobileContent : styles.bar}>
       <div className={styles.filterItem}>
         <div className={styles.label}>{t("filter.provider")}</div>
         <Select
@@ -157,7 +149,6 @@ const FilterBar: React.FC<FilterBarProps> = ({ onFilterChange, initialProviders 
           onClick={clearFilters}
           className={isMobile ? styles.fullWidthBtn : ""}
           size="large"
-          style={{ borderRadius: 10 }}
         >
           {t("filter.clear")}
         </Button>
@@ -175,15 +166,7 @@ const FilterBar: React.FC<FilterBarProps> = ({ onFilterChange, initialProviders 
             onClick={() => setDrawerVisible(true)}
             size="large"
             block
-            style={{
-              marginBottom: 24,
-              height: 52,
-              borderRadius: 16,
-              fontSize: 16,
-              fontWeight: 600,
-              background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)",
-              border: "none",
-            }}
+            style={{ marginBottom: 16, height: 48 }}
           >
             {t("filter.filter")}
           </Button>
@@ -200,7 +183,7 @@ const FilterBar: React.FC<FilterBarProps> = ({ onFilterChange, initialProviders 
             height="auto"
             styles={{ body: { padding: 0 } }}
           >
-            <div style={{ padding: "24px 16px" }}>{filterContent}</div>
+            {filterContent}
           </Drawer>
         </>
       ) : (

@@ -1,48 +1,49 @@
 .container {
-  background: rgba(254, 252, 232, 0.8);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(254, 240, 138, 0.5);
-  margin: 24px;
-  padding: 16px 24px;
-  border-radius: 16px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.03);
-  animation: springFadeIn 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+  background: var(--surface-alt);
+  border: 1px solid var(--rule);
+  margin: 20px clamp(16px, 4vw, 48px);
+  padding: 14px 20px;
+  border-radius: var(--r-container);
 }
 
 .header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .title {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  font-family: var(--font-body);
   font-weight: 700;
-  color: #854d0e;
-  font-size: 1rem;
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink);
 }
 
 .icon {
-  font-size: 16px;
+  font-size: 14px;
+  color: var(--accent);
 }
 
 .toggleBtn {
   display: none;
-  color: #d48806;
+  color: var(--muted);
+  font-size: 0.8rem;
 }
 
 .toggleBtn:hover {
-  color: #ad6800 !important;
-  background-color: rgba(212, 136, 6, 0.1) !important;
+  color: var(--accent) !important;
+  background: var(--accent-soft) !important;
 }
 
 .content {
-  color: #595959;
-  font-size: 14px;
+  color: var(--text);
+  font-size: 0.875rem;
   line-height: 1.6;
 }
 
@@ -55,36 +56,44 @@
 }
 
 .content :global(a) {
-  color: #1677ff;
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.content :global(strong) {
+  color: var(--ink);
 }
 
 @media (max-width: 768px) {
   .container {
-    margin: 12px;
+    margin: 16px;
+    padding: 12px 16px;
   }
-  
+
   .toggleBtn {
     display: inline-flex;
     align-items: center;
   }
-  
+
   .content {
-    transition: max-height 0.3s ease-out, opacity 0.3s ease-out, margin-top 0.3s ease-out;
+    transition: max-height 0.3s var(--ease-out), opacity 0.3s var(--ease-out),
+      margin-top 0.3s var(--ease-out);
     overflow: hidden;
   }
-  
+
   .collapsed {
     max-height: 0;
     opacity: 0;
     margin-top: 0;
   }
-  
+
   .expanded {
     max-height: 1000px;
     opacity: 1;
-    margin-top: 8px;
+    margin-top: 6px;
   }
-  
+
   .header {
     margin-bottom: 0;
   }

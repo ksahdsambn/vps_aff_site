@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, Noto_Sans_SC } from "next/font/google";
+import { Fraunces, Manrope, Noto_Sans_SC } from "next/font/google";
 import { AntdRegistry } from "@ant-design/nextjs-registry";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import "./globals.css";
@@ -9,18 +9,33 @@ const GA_ID = process.env.NEXT_PUBLIC_GA_ID || "";
 const GSC_VERIFICATION = process.env.NEXT_PUBLIC_GSC_VERIFICATION || "";
 
 /**
- * 字体策略：迁移到 next/font（内置优化、消除 CLS、自动 self-host）。
- * Inter（拉丁）+ Noto Sans SC（中文），与旧前端字体一致。
+ * 字体策略：next/font（内置优化、消除 CLS、自动 self-host）。
+ *
+ * Editorial-Data Minimal 字体配对：
+ * - Fraunces（display）：带光学尺寸的软衬线，用于标题与编辑式排版，营造规格出版物的权威感。
+ * - Manrope（body/UI）：几何无衬线，替代被设计技能明确禁用的 Inter。
+ * - Noto Sans SC（中文）：中文字体（AGENTS.md 要求），与两套拉丁字体各成原生配对。
+ *
+ * next/font 的 variable 用独立命名（--font-fraunces / --font-manrope / --font-noto），
+ * 避免 globals.css 的语义变量（--font-display / --font-body）与之同名冲突。
+ * globals.css 在 :root 里用这些原始变量组装出带 fallback 的字体栈。
  */
-const inter = Inter({
+const fraunces = Fraunces({
   subsets: ["latin"],
-  variable: "--font-inter",
+  axes: ["opsz", "SOFT"],
+  variable: "--font-fraunces",
+  display: "swap",
+});
+
+const manrope = Manrope({
+  subsets: ["latin"],
+  variable: "--font-manrope",
   display: "swap",
 });
 
 const notoSansSC = Noto_Sans_SC({
   subsets: ["latin"],
-  variable: "--font-noto-sans-sc",
+  variable: "--font-noto",
   display: "swap",
 });
 
@@ -103,12 +118,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="zh-CN" className={`${inter.variable} ${notoSansSC.variable}`} suppressHydrationWarning>
-      <body
-        style={{
-          fontFamily: "var(--font-inter), var(--font-noto-sans-sc), system-ui, sans-serif",
-        }}
-      >
+    <html lang="zh-CN" className={`${fraunces.variable} ${manrope.variable} ${notoSansSC.variable}`} suppressHydrationWarning>
+      <body>
         <AntdRegistry>
           {/* Organization + WebSite JSON-LD（全站级，移除 SearchAction） */}
           <script
