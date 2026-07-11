@@ -1,0 +1,91 @@
+.container {
+  background: rgba(254, 252, 232, 0.8);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(254, 240, 138, 0.5);
+  margin: 24px;
+  padding: 16px 24px;
+  border-radius: 16px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.03);
+  animation: springFadeIn 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  color: #854d0e;
+  font-size: 1rem;
+}
+
+.icon {
+  font-size: 16px;
+}
+
+.toggleBtn {
+  display: none;
+  color: #d48806;
+}
+
+.toggleBtn:hover {
+  color: #ad6800 !important;
+  background-color: rgba(212, 136, 6, 0.1) !important;
+}
+
+.content {
+  color: #595959;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.content :global(p) {
+  margin-bottom: 0.5em;
+}
+
+.content :global(p:last-child) {
+  margin-bottom: 0;
+}
+
+.content :global(a) {
+  color: #1677ff;
+}
+
+@media (max-width: 768px) {
+  .container {
+    margin: 12px;
+  }
+  
+  .toggleBtn {
+    display: inline-flex;
+    align-items: center;
+  }
+  
+  .content {
+    transition: max-height 0.3s ease-out, opacity 0.3s ease-out, margin-top 0.3s ease-out;
+    overflow: hidden;
+  }
+  
+  .collapsed {
+    max-height: 0;
+    opacity: 0;
+    margin-top: 0;
+  }
+  
+  .expanded {
+    max-height: 1000px;
+    opacity: 1;
+    margin-top: 8px;
+  }
+  
+  .header {
+    margin-bottom: 0;
+  }
+}

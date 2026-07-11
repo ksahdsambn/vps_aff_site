@@ -12,8 +12,10 @@
 2. 项目代码通过 GitHub 克隆到服务器。
 3. Docker Compose 负责启动 `db`、`backend`、`frontend` 三个服务。
 4. 1Panel 网站把域名流量反向代理到宿主机 `127.0.0.1:8080`。
-5. `frontend` 容器内部再把 `/api/` 请求转发到 `backend:3000`。
+5. `frontend` 容器运行 Next.js standalone server（端口 3000），内部通过 rewrites 把 `/api/` 请求转发到 `backend:3000`。
 6. 后续更新不再手工上传压缩包，而是由 1Panel 计划任务执行脚本，从 GitHub 同步最新代码并重建容器。
+
+> **架构变更（Next.js 迁移）**：前端已从 Vite + Puppeteer 预渲染 + nginx 静态托管，迁移到 Next.js App Router（SSG/ISR + standalone server）。前端容器不再使用 nginx/Puppeteer，直接运行 Next.js server（端口 3000）。SSG 预渲染在构建时拉取后端数据，运行时通过 rewrites 代理 `/api/`。
 
 ## 2. 前置条件
 
@@ -147,14 +149,14 @@ PORT=3000
 
 ```yaml
 ports:
-  - "80:80"
+  - "80:3000"
 ```
 
-改成：
+改成（绑定到 127.0.0.1，端口自定义）：
 
 ```yaml
 ports:
-  - "127.0.0.1:8080:80"
+  - "127.0.0.1:8080:3000"
 ```
 
 也就是说，最终 `docker-compose.yml` 中 `frontend` 段应类似这样：
@@ -164,26 +166,35 @@ ports:
     build:
       context: .
       dockerfile: docker/frontend/Dockerfile
+      args:
+        BACKEND_URL: http://backend:3000
     depends_on:
       - backend
+    environment:
+      BACKEND_URL: http://backend:3000
+      NEXT_PUBLIC_SITE_URL: https://xmde.de
+      PORT: "3000"
+      NODE_ENV: production
     ports:
-      - "127.0.0.1:8080:80"
+      - "127.0.0.1:8080:3000"
     networks:
       - app_network
 ```
+
+> 注意：Next.js frontend 容器内部端口固定为 `3000`（standalone server），不再是旧的 `80`（nginx）。
 
 ### 7.2 为什么要绑定到 `127.0.0.1`
 
 推荐写成：
 
 ```yaml
-- "127.0.0.1:8080:80"
+- "127.0.0.1:8080:3000"
 ```
 
 而不是：
 
 ```yaml
-- "8080:80"
+- "8080:3000"
 ```
 
 原因是：
@@ -195,7 +206,7 @@ ports:
 如果 `8080` 已被占用，可以改成别的端口，比如：
 
 ```yaml
-- "127.0.0.1:18080:80"
+- "127.0.0.1:18080:3000"
 ```
 
 但后面的 1Panel 网站代理地址也必须同步改成 `http://127.0.0.1:18080`。
@@ -206,7 +217,7 @@ ports:
 
 - `db` 服务名
 - `backend` 服务名
-- `frontend` 容器内部端口 `80`
+- `frontend` 容器内部端口 `3000`（Next.js standalone server）
 - `backend` 容器内部端口 `3000`
 - 数据库主机名 `db`
 
@@ -619,7 +630,7 @@ http://127.0.0.1:8080
 3. `docker-compose.yml` 是否已经把前端端口改成：
 
 ```yaml
-- "127.0.0.1:8080:80"
+- "127.0.0.1:8080:3000"
 ```
 
 ### 12.3 首页能打开，但后台登录失败

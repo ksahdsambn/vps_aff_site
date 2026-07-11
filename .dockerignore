@@ -3,4 +3,7 @@ backend/dist
 backend/.env
 frontend/node_modules
 frontend/dist
+frontend-next/node_modules
+frontend-next/.next
+frontend-next/.env*
 npm-debug.log*
