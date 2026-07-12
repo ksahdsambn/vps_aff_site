@@ -12,6 +12,7 @@ import Header from "@/components/Header";
 import Announcement from "@/components/Announcement";
 import Footer from "@/components/Footer";
 import ProductDetailContent from "@/components/home/ProductDetailContent";
+import { formatPrice, formatNum } from "@/lib/format";
 
 /** ISR：每小时重新生成 */
 export const revalidate = 3600;
@@ -101,10 +102,14 @@ export async function generateMetadata({
   }
 
   const title = `${product.provider} ${product.name}`;
+  const priceText = formatPrice(product.price, product.currency);
+  const cpu = formatNum(product.cpu);
+  const memory = formatNum(product.memory);
+  const disk = formatNum(product.disk);
   const description =
     locale === "zh"
-      ? `${product.provider} ${product.name}：${product.cpu}核 ${product.memory}GB内存 ${product.disk}GB硬盘，年费 ${product.price.toFixed(2)} ${product.currency}`
-      : `${product.provider} ${product.name}: ${product.cpu} cores, ${product.memory}GB RAM, ${product.disk}GB disk, ${product.price.toFixed(2)} ${product.currency}/yr`;
+      ? `${product.provider} ${product.name}：${cpu}核 ${memory}GB内存 ${disk}GB硬盘，年费 ${priceText}`
+      : `${product.provider} ${product.name}: ${cpu} cores, ${memory}GB RAM, ${disk}GB disk, ${priceText}/yr`;
 
   return {
     title,

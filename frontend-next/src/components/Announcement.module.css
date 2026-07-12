@@ -80,6 +80,8 @@
     transition: max-height 0.3s var(--ease-out), opacity 0.3s var(--ease-out),
       margin-top 0.3s var(--ease-out);
     overflow: hidden;
+    overflow-wrap: anywhere;
+    word-break: break-word;
   }
 
   .collapsed {
@@ -89,7 +91,8 @@
   }
 
   .expanded {
-    max-height: 1000px;
+    /* 提高上限以容纳较长的公告内容；CSS max-height 动画需要有限值。 */
+    max-height: 5000px;
     opacity: 1;
     margin-top: 6px;
   }

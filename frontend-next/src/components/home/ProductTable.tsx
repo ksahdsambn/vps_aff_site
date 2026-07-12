@@ -1,12 +1,13 @@
 "use client";
 
 import React from "react";
-import { Table, Tooltip, Typography } from "antd";
+import { Table, Tooltip, Typography, Empty } from "antd";
 import type { ColumnsType, TableProps } from "antd/es/table";
 import { useTranslation } from "react-i18next";
 import { QuestionCircleOutlined, ShoppingCartOutlined } from "@ant-design/icons";
 import type { Product } from "@/lib/api";
 import Button from "@/components/ui/Button";
+import { formatNum, formatTraffic, formatBandwidth, formatPrice } from "@/lib/format";
 
 const { Text } = Typography;
 
@@ -37,10 +38,12 @@ const ProductTable: React.FC<ProductTableProps> = ({ data, loading, pagination, 
       dataIndex: "provider",
       key: "provider",
       width: 110,
+      ellipsis: true,
       render: (text) => (
         <span
           style={{
             display: "inline-block",
+            maxWidth: "100%",
             padding: "2px 10px",
             borderRadius: 6,
             background: "var(--accent-soft)",
@@ -48,6 +51,10 @@ const ProductTable: React.FC<ProductTableProps> = ({ data, loading, pagination, 
             fontSize: 12,
             fontWeight: 600,
             lineHeight: "20px",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            verticalAlign: "middle",
           }}
         >
           {text}
@@ -74,7 +81,7 @@ const ProductTable: React.FC<ProductTableProps> = ({ data, loading, pagination, 
       width: 90,
       render: (val: number) => (
         <span className="num" style={{ fontSize: 13, color: "var(--text)" }}>
-          {val} {t("table.cpuUnit")}
+          {formatNum(val)} {t("table.cpuUnit")}
         </span>
       ),
     },
@@ -86,7 +93,7 @@ const ProductTable: React.FC<ProductTableProps> = ({ data, loading, pagination, 
       width: 90,
       render: (val: number) => (
         <span className="num" style={{ fontSize: 13, color: "var(--text)" }}>
-          {val} {t("table.memoryUnit")}
+          {formatNum(val)} {t("table.memoryUnit")}
         </span>
       ),
     },
@@ -98,7 +105,7 @@ const ProductTable: React.FC<ProductTableProps> = ({ data, loading, pagination, 
       width: 90,
       render: (val: number) => (
         <span className="num" style={{ fontSize: 13, color: "var(--text)" }}>
-          {val} {t("table.diskUnit")}
+          {formatNum(val)} {t("table.diskUnit")}
         </span>
       ),
     },
@@ -113,7 +120,7 @@ const ProductTable: React.FC<ProductTableProps> = ({ data, loading, pagination, 
           className="num"
           style={{ fontSize: 13, color: "var(--text)" }}
         >
-          {(val / 1000).toFixed(2)} TB
+          {formatTraffic(val)} TB
         </span>
       ),
     },
@@ -125,7 +132,7 @@ const ProductTable: React.FC<ProductTableProps> = ({ data, loading, pagination, 
       sorter: true,
       render: (val: number) => (
         <span className="num" style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>
-          {(val / 1000).toFixed(2)} Gbps
+          {formatBandwidth(val)} Gbps
         </span>
       ),
     },
@@ -134,8 +141,9 @@ const ProductTable: React.FC<ProductTableProps> = ({ data, loading, pagination, 
       dataIndex: "location",
       key: "location",
       width: 100,
+      ellipsis: true,
       render: (text: string) => (
-        <span style={{ fontSize: 13, color: "var(--text)" }}>{text}</span>
+        <span style={{ fontSize: 13, color: "var(--text)" }}>{text || "—"}</span>
       ),
     },
     {
@@ -153,7 +161,7 @@ const ProductTable: React.FC<ProductTableProps> = ({ data, loading, pagination, 
       sorter: true,
       render: (val: number, record: Product) => (
         <span className="num" style={{ fontSize: 16, fontWeight: 700, color: "var(--accent)" }}>
-          {val.toFixed(2)} {record.currency}
+          {formatPrice(val, record.currency)}
         </span>
       ),
     },
@@ -191,6 +199,7 @@ const ProductTable: React.FC<ProductTableProps> = ({ data, loading, pagination, 
         dataSource={data}
         rowKey="id"
         loading={loading}
+        locale={{ emptyText: <Empty description={t("table.noData")} /> }}
         pagination={{
           ...pagination,
           showSizeChanger: true,

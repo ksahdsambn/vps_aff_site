@@ -120,9 +120,31 @@ function serverApiBase(): string {
 /** 服务端 fetch 超时（ms）。构建时后端不可用则快速失败，降级为空数据。 */
 const SERVER_FETCH_TIMEOUT = 8000;
 
-/** 从统一响应信封中取 data，非 0 code 抛错。 */
+/**
+ * 非 JSON 响应解析错误。
+ *
+ * 当反代（nginx/Cloudflare）返回 HTML 错误页（502/504/超时页）时，
+ * `res.json()` 会抛 SyntaxError，这里包装为带 HTTP status 的错误，
+ * 使调用方能区分「后端业务错误」与「反代/网关错误」。
+ */
+export class ApiParseError extends Error {
+  readonly status: number;
+  constructor(status: number, message?: string) {
+    super(message || `Response is not valid JSON (HTTP ${status})`);
+    this.name = "ApiParseError";
+    this.status = status;
+  }
+}
+
+/** 从统一响应信封中取 data，非 0 code 抛错。非 JSON body 抛 ApiParseError。 */
 async function unwrap<T>(res: Response): Promise<T> {
-  const json: ApiResponse<T> = await res.json();
+  let json: ApiResponse<T>;
+  try {
+    json = (await res.json()) as ApiResponse<T>;
+  } catch {
+    // 反代返回 HTML 错误页 / 空响应体时 res.json() 抛 SyntaxError。
+    throw new ApiParseError(res.status);
+  }
   if (json.code !== 0) {
     throw new Error(json.message || `API error code=${json.code}`);
   }
@@ -145,6 +167,8 @@ export interface GetProductsParams {
   location?: string;
   sortField?: string;
   sortOrder?: "asc" | "desc";
+  /** AbortSignal：客户端快速切换筛选/排序/分页时取消在途请求。 */
+  signal?: AbortSignal;
 }
 
 /** 公共：获取产品列表（分页/筛选/排序）。 */
@@ -160,7 +184,10 @@ export async function getProducts(
   if (params.sortField) qs.set("sortField", params.sortField);
   if (params.sortOrder) qs.set("sortOrder", params.sortOrder);
   const query = qs.toString();
-  const res = await fetch(`${serverApiBase()}/products${query ? `?${query}` : ""}`, serverFetchOptions(300));
+  const opts = serverFetchOptions(300);
+  // 客户端传入的 signal 用于取消在途请求；服务端 SSG 预取不传。
+  if (params.signal) opts.signal = params.signal;
+  const res = await fetch(`${serverApiBase()}/products${query ? `?${query}` : ""}`, opts);
   return unwrap<PaginatedResponse<Product>>(res);
 }
 
@@ -182,11 +209,17 @@ export async function getAllProductIds(): Promise<ProductIdWithUpdated[]> {
   return unwrap<ProductIdWithUpdated[]>(res);
 }
 
-/** 公共：获取单个产品详情（不存在时抛错/404）。 */
+/** 公共：获取单个产品详情（不存在时抛错/404，服务器错误抛错/5xx）。 */
 export async function getProductById(id: number | string): Promise<Product> {
   const res = await fetch(`${serverApiBase()}/products/${id}`, serverFetchOptions(3600));
   if (!res.ok) {
-    throw new Error(`Product ${id} not found`);
+    // 区分 404（产品不存在）与 5xx（后端/网关故障）：
+    // 404 → 调用方走 notFound() 渲染 404 页；
+    // 5xx → 抛出带 status 的错误，避免把临时故障误渲染为永久 404。
+    if (res.status === 404) {
+      throw new Error(`Product ${id} not found`);
+    }
+    throw new Error(`Failed to load product ${id} (HTTP ${res.status})`);
   }
   return unwrap<Product>(res);
 }
@@ -219,13 +252,15 @@ export async function getAdminApi() {
   });
 
   // 响应拦截：401 跳转登录；会话位于 HttpOnly Cookie，前端不可读也无需清理。
+  // 跳转时携带 ?from=<当前路径>，登录成功后可返回原页面（避免丢失未保存表单上下文）。
   instance.interceptors.response.use(
     (response) => {
       const data = response.data as ApiResponse<unknown>;
       if (data?.code === 401) {
         if (typeof window !== "undefined") {
           if (!window.location.pathname.startsWith("/admin/login")) {
-            window.location.href = "/admin/login";
+            const from = encodeURIComponent(window.location.pathname + window.location.search);
+            window.location.href = `/admin/login?from=${from}&reason=expired`;
           }
         }
         return Promise.reject(new Error("Session expired. Please sign in again."));
@@ -235,7 +270,8 @@ export async function getAdminApi() {
     (error) => {
       if (error?.response?.status === 401 && typeof window !== "undefined") {
         if (!window.location.pathname.startsWith("/admin/login")) {
-          window.location.href = "/admin/login";
+          const from = encodeURIComponent(window.location.pathname + window.location.search);
+          window.location.href = `/admin/login?from=${from}&reason=expired`;
         }
       }
       return Promise.reject(error);
@@ -260,6 +296,15 @@ export function getApiStatusCode(err: unknown): number | undefined {
   if (err && typeof err === "object" && "response" in err) {
     const resp = (err as { response?: { data?: ApiResponse<unknown> } }).response;
     return resp?.data?.code;
+  }
+  return undefined;
+}
+
+/** 获取 HTTP 状态码（与业务 code 区分，用于检测 429/503 等）。 */
+export function getHttpStatus(err: unknown): number | undefined {
+  if (err && typeof err === "object" && "response" in err) {
+    const resp = (err as { response?: { status?: number } }).response;
+    return resp?.status;
   }
   return undefined;
 }

@@ -9,15 +9,19 @@ import Announcement from "@/components/Announcement";
 import Footer from "@/components/Footer";
 import ProviderProductsTable from "@/components/home/ProviderProductsTable";
 import ProductCardList from "@/components/home/ProductCard";
-import type { Product } from "@/lib/api";
 
 /**
- * 服务商聚合页（SSG）。
+ * 服务商聚合页（SSG + ISR）。
  *
  * generateStaticParams 预生成所有服务商 × 2 语言。
  * 列出该服务商的所有产品，JSON-LD：ItemList + Brand。
  * 产品表格为 client island（AntD Table 需 ConfigProvider 上下文）。
+ *
+ * revalidate：每小时重新生成。构建时若后端不可用，getProductsByProvider
+ * 降级为空数组（走 notFound）；但 ISR 运行时重新生成时，fetch 失败会
+ * 冒泡到 error.tsx（而非静默转为 404），保留已生成的旧版本页面。
  */
+export const revalidate = 3600;
 
 export async function generateStaticParams() {
   const providers = await getProviders().catch(() => [] as string[]);
@@ -36,7 +40,10 @@ export default async function ProviderPage({ params }: ProviderPageProps) {
   const locale: Locale = resolveLocale(rawLocale);
 
   const [products, config] = await Promise.all([
-    getProductsByProvider(name).catch(() => [] as Product[]),
+    // 后端不可达时降级为空数组 → notFound()。构建时（SSG）保证构建不失败；
+    // 运行时 ISR 重新生成时，Next.js 会保留上次成功生成的页面版本而非发布 404，
+    // 下次 revalidate 自动重试。
+    getProductsByProvider(name).catch(() => [] as Awaited<ReturnType<typeof getProductsByProvider>>),
     getConfig().catch(() => null),
   ]);
 

@@ -10,7 +10,9 @@ export default async function RootPage() {
 function pickLocale(acceptLanguage: string): Locale {
   const parsed = acceptLanguage.split(",").map((part) => {
     const [tag, qStr] = part.trim().split(";q=");
-    return { tag: tag.toLowerCase(), q: qStr ? parseFloat(qStr) : 1 };
+    const q = qStr ? parseFloat(qStr) : 1;
+    // 防止 NaN 污染排序比较器：畸形 q 值（如 q=abc）回退到默认权重 1。
+    return { tag: tag.toLowerCase(), q: Number.isFinite(q) ? q : 1 };
   }).sort((a, b) => b.q - a.q);
   for (const { tag } of parsed) {
     if (tag.startsWith("zh")) return "zh";

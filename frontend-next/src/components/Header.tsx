@@ -34,9 +34,12 @@ interface HeaderProps {
  */
 const Header: React.FC<HeaderProps> = ({ config, locale, asH1 = true }) => {
   const { i18n } = useTranslation();
+  const [logoBroken, setLogoBroken] = React.useState(false);
 
+  // startsWith("zh") 兼容 "zh-CN" 等区域变体，避免误判到英文分支。
+  const isZh = i18n.language?.startsWith("zh");
   const title =
-    i18n.language === "zh"
+    isZh
       ? config?.site_title_zh || "VPS导航"
       : config?.site_title_en || "VPS Navigator";
 
@@ -45,14 +48,15 @@ const Header: React.FC<HeaderProps> = ({ config, locale, asH1 = true }) => {
   return (
     <header className={styles.header}>
       <div className={styles.logoContainer}>
-        {config?.site_logo && (
+        {config?.site_logo && !logoBroken && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={config.site_logo}
-            alt="VPS Navi Logo"
+            alt={title}
             className={styles.logo}
             width={120}
             height={28}
+            onError={() => setLogoBroken(true)}
           />
         )}
         {asH1 ? (

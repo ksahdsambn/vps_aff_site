@@ -22,12 +22,30 @@ interface GettingStartedProps {
 const STORAGE_KEY = "vps-navi-onboarding-dismissed";
 const subscribeToStorage = () => () => undefined;
 
+/** 安全读取 localStorage（隐私模式 / 配额超额时降级为 false）。 */
+function readDismissed(): boolean {
+  try {
+    return window.localStorage.getItem(STORAGE_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+/** 安全写入 localStorage（隐私模式 / 配额超额时静默失败，不阻断交互）。 */
+function writeDismissed(value: boolean): void {
+  try {
+    window.localStorage.setItem(STORAGE_KEY, value ? "true" : "false");
+  } catch {
+    // 隐私模式或配额超额——忽略，用户仍可在本次会话内使用 onboarding。
+  }
+}
+
 /** Optional first-use guide that starts a real comparison flow. */
 export default function GettingStarted({ resultCount, onStart }: GettingStartedProps) {
   const { t } = useTranslation();
   const dismissed = useSyncExternalStore(
     subscribeToStorage,
-    () => window.localStorage.getItem(STORAGE_KEY) === "true",
+    readDismissed,
     () => false
   );
   const [forceOpen, setForceOpen] = useState(false);
@@ -36,13 +54,13 @@ export default function GettingStarted({ resultCount, onStart }: GettingStartedP
   const expanded = forceOpen || !dismissed;
 
   const dismiss = () => {
-    window.localStorage.setItem(STORAGE_KEY, "true");
+    writeDismissed(true);
     setForceOpen(false);
   };
 
   const start = (preset: OnboardingPreset) => {
     setChosenPreset(preset);
-    window.localStorage.setItem(STORAGE_KEY, "true");
+    writeDismissed(true);
     setForceOpen(false);
     onStart(preset);
   };

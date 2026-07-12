@@ -19,7 +19,7 @@ export const metadata: Metadata = {
 
 export default function AdminRootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="zh-CN">
+    <html lang="en">
       <body><AntdRegistry><AntdThemeProvider>{children}</AntdThemeProvider></AntdRegistry></body>
     </html>
   );

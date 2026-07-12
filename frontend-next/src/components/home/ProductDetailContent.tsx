@@ -13,6 +13,7 @@ import type { Product } from "@/lib/api";
 import type { Locale } from "@/lib/i18n";
 import SpecStat from "@/components/ui/SpecStat";
 import Button from "@/components/ui/Button";
+import { formatNum, formatTraffic, formatBandwidth } from "@/lib/format";
 import styles from "./ProductDetailContent.module.css";
 
 /**
@@ -58,8 +59,8 @@ export default function ProductDetailContent({
           </div>
           <div className={styles.priceBlock}>
             <div className={`${styles.price} num`}>
-              {product.price.toFixed(2)}{" "}
-              <span className={styles.currency}>{product.currency}</span>
+              {formatNum(product.price, 2)}{" "}
+              <span className={styles.currency}>{product.currency || ""}</span>
             </div>
             <div className={styles.priceLabel}>{priceLabel}</div>
           </div>
@@ -69,22 +70,22 @@ export default function ProductDetailContent({
 
         <h2 className={styles.sectionTitle}>{specsTitle}</h2>
         <div className={styles.specGrid}>
-          <SpecStat label={t("table.cpu")} value={product.cpu} unit={cores} />
-          <SpecStat label={t("table.memory")} value={product.memory} unit={t("table.memoryUnit")} />
-          <SpecStat label={t("table.disk")} value={product.disk} unit={t("table.diskUnit")} />
+          <SpecStat label={t("table.cpu")} value={formatNum(product.cpu)} unit={cores} />
+          <SpecStat label={t("table.memory")} value={formatNum(product.memory)} unit={t("table.memoryUnit")} />
+          <SpecStat label={t("table.disk")} value={formatNum(product.disk)} unit={t("table.diskUnit")} />
           <SpecStat
             label={t("table.monthlyTraffic")}
-            value={(product.monthlyTraffic / 1000).toFixed(2)}
+            value={formatTraffic(product.monthlyTraffic)}
             unit="TB"
             icon={<InteractionOutlined />}
           />
           <SpecStat
             label={t("table.bandwidth")}
-            value={(product.bandwidth / 1000).toFixed(2)}
+            value={formatBandwidth(product.bandwidth)}
             unit="Gbps"
             icon={<ThunderboltOutlined />}
           />
-          <SpecStat label={t("table.location")} value={product.location} icon={<GlobalOutlined />} />
+          <SpecStat label={t("table.location")} value={product.location || "—"} icon={<GlobalOutlined />} />
         </div>
 
         {product.remark && (
