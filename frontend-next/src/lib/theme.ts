@@ -19,7 +19,11 @@ import type { ThemeConfig } from "antd";
  */
 export const antdTheme: ThemeConfig = {
   cssVar: { key: "vps" },
-  hashed: true,
+  // hashed:false —— 本仓库仅含单一 antd 版本。官方文档：单版本应用设 false 可
+  // 去掉每条 CSS-in-JS 规则前缀的 :where(.css-xxxxx) 哈希类，缩短选择器、减小
+  // 内联 <style> 体积（首页是重灾区：Table+Select+Pagination 收集了 ~228KB）。
+  // 配合已开启的 cssVar（token 进 CSS 变量层），规则可被各组件充分共享。
+  hashed: false,
   token: {
     colorPrimary: "#4338ca",
     colorText: "#3a3f4f",

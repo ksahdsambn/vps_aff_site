@@ -208,6 +208,16 @@ h1, h2, h3, h4, h5, h6 {
 /* —— Table row highlight (warm, calm) —— */
 .ant-table-tbody > tr.ant-table-row {
   transition: background-color var(--dur-fast) var(--ease-out);
+  /*
+   * content-visibility:auto 让浏览器跳过视口外表格行的渲染/绘制/布局。
+   * 首页 / 服务商聚合页一次渲染 ≤50–200 行（pagination=false 按设计意图保留），
+   * 首屏仅可见 ~10 行；该属性让浏览器只对可见行做实际工作，显著降低首屏
+   * 绘制与 INP。contain-intrinsic-size 提供占位高度（auto 记忆上次测量值，
+   * 56px 是 ProductTable 行高 ≈ padding 14*2 + 内容），避免滚动条抖动。
+   * 视口外行进入视口时浏览器会即时渲染（content-visibility 的默认行为）。
+   */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 56px;
 }
 
 /* —— Minimal scrollbar (warm) —— */
