@@ -56,6 +56,8 @@ const Header: React.FC<HeaderProps> = ({ config, locale, asH1 = true }) => {
             className={styles.logo}
             width={120}
             height={28}
+            decoding="async"
+            fetchPriority="high"
             onError={() => setLogoBroken(true)}
           />
         )}
