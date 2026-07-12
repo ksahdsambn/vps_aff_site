@@ -104,7 +104,10 @@ const ProductCardList: React.FC<ProductCardProps> = ({
           <Empty description={t("table.noData")} />
         </div>
       ) : (
-        <div className={styles.cardList}>
+        <div
+          className={`${styles.cardList} ${loading && data.length > 0 ? styles.stale : ""}`}
+          aria-busy={loading && data.length > 0}
+        >
           {data.map((item, index) => (
             <article
               key={item.id ?? index}

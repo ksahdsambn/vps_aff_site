@@ -99,19 +99,19 @@ export default function GettingStarted({ resultCount, onStart }: GettingStartedP
 
   return (
     <aside className={`${styles.guide} page-enter`} aria-label={t("onboarding.ariaLabel")}>
-      <div className={styles.intro}>
+      <div className={`${styles.intro} stagger-item stagger-delay-1`}>
         <p className="eyebrow">{t("onboarding.eyebrow")}</p>
         <h2>{t("onboarding.title")}</h2>
         <p className={styles.lede}>{t("onboarding.description", { count: resultCount })}</p>
       </div>
 
-      <ol className={styles.steps}>
+      <ol className={`${styles.steps} stagger-item stagger-delay-3`}>
         <li className={styles.step}><span className={styles.stepNumber}>1</span><span>{t("onboarding.stepGoal")}</span></li>
         <li className={styles.step}><span className={styles.stepNumber}>2</span><span>{t("onboarding.stepCompare")}</span></li>
         <li className={styles.step}><span className={styles.stepNumber}>3</span><span>{t("onboarding.stepReview")}</span></li>
       </ol>
 
-      <div className={styles.options}>
+      <div className={`${styles.options} stagger-item stagger-delay-5`}>
         {options.map((option) => (
           <button
             className={`${styles.option} ${chosenPreset === option.preset ? styles.optionSelected : ""}`}
@@ -130,7 +130,7 @@ export default function GettingStarted({ resultCount, onStart }: GettingStartedP
         ))}
       </div>
 
-      <div className={styles.footer}>
+      <div className={`${styles.footer} stagger-item stagger-delay-7`}>
         <span>{t("onboarding.note")}</span>
         <Button type="link" onClick={dismiss} className={styles.skip}>{t("onboarding.skip")}</Button>
       </div>

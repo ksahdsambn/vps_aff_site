@@ -131,7 +131,12 @@ h1, h2, h3, h4, h5, h6 {
   margin: 0;
 }
 
-/* —— Staggered list entrance (ease-out-quart, no bounce) —— */
+/*
+ * —— Staggered entrance (ease-out-quart, no bounce) ——
+ * Used by the mobile product card list AND by section reveals on the
+ * onboarding guide and the product-detail panel (paired with .stagger-delay-N).
+ * Only opacity + translateY; reduced-motion zeroes these below.
+ */
 .stagger-item {
   opacity: 0;
   transform: translateY(8px);

@@ -50,7 +50,7 @@ export default function ProductDetailContent({
       />
 
       <div className={`${styles.panel} page-enter`}>
-        <header className={styles.head}>
+        <header className={`${styles.head} stagger-item stagger-delay-1`}>
           <div className={styles.headLeft}>
             <span className={styles.provider}>{product.provider}</span>
             <Typography.Title level={1} className={styles.title}>
@@ -68,8 +68,8 @@ export default function ProductDetailContent({
 
         <hr className={styles.rule} />
 
-        <h2 className={styles.sectionTitle}>{specsTitle}</h2>
-        <div className={styles.specGrid}>
+        <h2 className={`${styles.sectionTitle} stagger-item stagger-delay-3`}>{specsTitle}</h2>
+        <div className={`${styles.specGrid} stagger-item stagger-delay-4`}>
           <SpecStat label={t("table.cpu")} value={formatNum(product.cpu)} unit={cores} />
           <SpecStat label={t("table.memory")} value={formatNum(product.memory)} unit={t("table.memoryUnit")} />
           <SpecStat label={t("table.disk")} value={formatNum(product.disk)} unit={t("table.diskUnit")} />
@@ -91,7 +91,7 @@ export default function ProductDetailContent({
         {product.remark && (
           <>
             <hr className={styles.rule} />
-            <div className={styles.remarkBlock}>
+            <div className={`${styles.remarkBlock} stagger-item stagger-delay-5`}>
               <div className={styles.remarkLabel}>{remarkLabel}</div>
               <Typography.Paragraph className={styles.remarkText} style={{ marginTop: 6, marginBottom: 0 }}>
                 {product.remark}
@@ -102,7 +102,7 @@ export default function ProductDetailContent({
 
         <hr className={styles.rule} />
 
-        <div className={styles.actions}>
+        <div className={`${styles.actions} stagger-item stagger-delay-6`}>
           {product.reviewUrl && (
             <Button variant="ghost" size="large" href={product.reviewUrl} target="_blank" rel="noopener noreferrer">
               {reviewLabel}

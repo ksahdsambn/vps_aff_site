@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import dynamic from "next/dynamic";
 import { useTranslation } from "react-i18next";
-import { CaretDownOutlined, CaretUpOutlined, NotificationOutlined } from "@ant-design/icons";
+import { CaretDownOutlined, NotificationOutlined } from "@ant-design/icons";
 import { Button } from "antd";
 import styles from "./Announcement.module.css";
 import type { FrontendConfig } from "@/lib/api";
@@ -50,16 +50,10 @@ const Announcement: React.FC<AnnouncementProps> = ({ config }) => {
           size="small"
           onClick={() => setExpanded(!expanded)}
           className={styles.toggleBtn}
+          aria-expanded={expanded}
         >
-          {expanded ? (
-            <>
-              <CaretUpOutlined /> {t("announcement.collapse")}
-            </>
-          ) : (
-            <>
-              <CaretDownOutlined /> {t("announcement.expand")}
-            </>
-          )}
+          <CaretDownOutlined className={`${styles.chevron} ${expanded ? styles.chevronUp : ""}`} />
+          {expanded ? t("announcement.collapse") : t("announcement.expand")}
         </Button>
       </div>
       <div className={`${styles.content} ${expanded ? styles.expanded : styles.collapsed}`}>

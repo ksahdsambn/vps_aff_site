@@ -41,6 +41,19 @@
   background: var(--accent-soft) !important;
 }
 
+/*
+ * Chevron rotates 180° on expand instead of swapping two icons — a single
+ * continuous transition reads as calmer feedback than an abrupt icon flip.
+ * Rotated via transform (GPU-friendly); reduced-motion zeroes it globally.
+ */
+.chevron {
+  transition: transform var(--dur) var(--ease-out);
+}
+
+.chevronUp {
+  transform: rotate(180deg);
+}
+
 .content {
   color: var(--text);
   font-size: 0.875rem;

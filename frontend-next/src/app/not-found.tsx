@@ -21,7 +21,7 @@ export default function NotFound() {
         fontFamily: "var(--font-body), system-ui, sans-serif",
       }}
     >
-      <div style={{ maxWidth: 480 }}>
+      <div className="page-enter" style={{ maxWidth: 480 }}>
         <h1
           style={{
             fontFamily: "var(--font-display), Georgia, serif",
