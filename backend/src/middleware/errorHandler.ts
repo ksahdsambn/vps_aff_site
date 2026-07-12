@@ -7,13 +7,22 @@ import { logError } from '../utils/logError';
  * 生产环境不暴露堆栈信息
  */
 export function errorHandler(
-  err: Error & { statusCode?: number; code?: number },
+  err: Error & { statusCode?: number; code?: number | string },
   _req: Request,
   res: Response,
   _next: NextFunction
 ): void {
-  const statusCode = err.statusCode || 500;
-  const code = err.code || statusCode;
+  // 仅信任有限的数值 statusCode，防止非数字值（如 Prisma 的字符串 code）污染 HTTP 状态。
+  const statusCode =
+    typeof err.statusCode === 'number' && Number.isFinite(err.statusCode)
+      ? err.statusCode
+      : 500;
+  // Node/Prisma 错误的 err.code 可能是字符串（如 "P2002"、"ERR_..."），
+  // 而响应信封要求 code: number。仅当 err.code 为有限数值时采用，否则回退到 statusCode。
+  const code =
+    typeof err.code === 'number' && Number.isFinite(err.code)
+      ? err.code
+      : statusCode;
   const message = err.message || '服务器内部错误';
 
   // 使用 logError 安全记录（仅 name/code/message，不含堆栈/SQL/参数）。

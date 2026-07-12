@@ -2,6 +2,7 @@
 
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import type { FrontendConfig } from "@/lib/api";
 import type { Locale } from "@/lib/i18n";
 import styles from "./Footer.module.css";
@@ -20,8 +21,10 @@ interface FooterProps {
 export default function Footer({ config, locale }: FooterProps) {
   const { i18n } = useTranslation();
   const year = new Date().getFullYear();
+  // startsWith("zh") 兼容 "zh-CN" 等区域变体。
+  const isZh = i18n.language?.startsWith("zh");
   const siteTitle =
-    i18n.language === "zh"
+    isZh
       ? config?.site_title_zh || "VPS导航"
       : config?.site_title_en || "VPS Navigator";
 
@@ -32,6 +35,15 @@ export default function Footer({ config, locale }: FooterProps) {
 
   const privacyLabel = locale === "zh" ? "隐私政策" : "Privacy Policy";
   const blogLabel = locale === "zh" ? "博客" : "Blog";
+
+  // 语言切换保留当前路径（与 LanguageSwitcher 一致）：
+  // /zh/products/1 → /en/products/1，而非跳回首页。
+  const pathname = usePathname();
+  const targetLocale: Locale = locale === "zh" ? "en" : "zh";
+  const hasLocalePrefix = /^\/(zh|en)(\/|$)/.test(pathname);
+  const langSwitchHref = hasLocalePrefix
+    ? pathname.replace(/^\/(zh|en)(\/|$)/, `/${targetLocale}$2`)
+    : `/${targetLocale}`;
 
   return (
     <footer className={styles.footer}>
@@ -64,7 +76,7 @@ export default function Footer({ config, locale }: FooterProps) {
             )}
           </span>
           <span className={styles.divider} aria-hidden="true" />
-          <Link href={`/${locale === "zh" ? "en" : "zh"}`}>
+          <Link href={langSwitchHref}>
             {locale === "zh" ? "English" : "中文"}
           </Link>
         </nav>

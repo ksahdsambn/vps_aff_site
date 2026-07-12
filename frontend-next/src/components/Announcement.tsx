@@ -30,8 +30,9 @@ const Announcement: React.FC<AnnouncementProps> = ({ config }) => {
   const { i18n, t } = useTranslation();
   const [expanded, setExpanded] = useState(true);
 
+  // startsWith("zh") 兼容 "zh-CN" 等区域变体。
   const content =
-    i18n.language === "zh" ? config?.announcement_zh : config?.announcement_en;
+    i18n.language?.startsWith("zh") ? config?.announcement_zh : config?.announcement_en;
 
   if (!content) {
     return null;

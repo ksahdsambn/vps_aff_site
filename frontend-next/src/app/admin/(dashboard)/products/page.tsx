@@ -76,6 +76,10 @@ export default function AdminProductsPage() {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editingRecord, setEditingRecord] = useState<Product | null>(null);
+  // 提交中状态：Modal OK 按钮 loading + 禁用，防止双击重复提交（创建重复产品）。
+  const [saving, setSaving] = useState(false);
+  // 删除中状态：按行禁用，防止重复删除 / 在 refresh 期间连续操作。
+  const [deletingId, setDeletingId] = useState<number | null>(null);
   const [form] = Form.useForm<ProductFormValues>();
 
   useEffect(() => {
@@ -153,6 +157,7 @@ export default function AdminProductsPage() {
   };
 
   const handleDelete = async (id: number) => {
+    setDeletingId(id);
     try {
       await adminDeleteProduct(id);
       message.success("Product deleted.");
@@ -163,6 +168,8 @@ export default function AdminProductsPage() {
       }
     } catch (error) {
       message.error(getApiErrorMessage(error) || "Couldn't delete the product. Please try again.");
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -175,7 +182,7 @@ export default function AdminProductsPage() {
     }
 
     const currency = values.currency.toUpperCase();
-
+    setSaving(true);
     try {
       if (editingId !== null && editingRecord) {
         const payload: ProductUpdatePayload = {};
@@ -246,6 +253,8 @@ export default function AdminProductsPage() {
       refreshCurrentPage();
     } catch (error) {
       message.error(getApiErrorMessage(error) || "Couldn't save the product. Please try again.");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -272,8 +281,16 @@ export default function AdminProductsPage() {
           <Button type="link" icon={<EditOutlined />} onClick={() => showEditModal(record)}>
             Edit
           </Button>
-          <Popconfirm title="Delete this product?" description="This can't be undone." okText="Delete" okButtonProps={{ danger: true }} cancelText="Cancel" onConfirm={() => handleDelete(record.id)}>
-            <Button type="link" danger icon={<DeleteOutlined />}>
+          <Popconfirm
+            title="Delete this product?"
+            description="This can't be undone."
+            okText="Delete"
+            okButtonProps={{ danger: true, loading: deletingId === record.id }}
+            cancelText="Cancel"
+            disabled={deletingId !== null}
+            onConfirm={() => handleDelete(record.id)}
+          >
+            <Button type="link" danger icon={<DeleteOutlined />} disabled={deletingId !== null} loading={deletingId === record.id}>
               Delete
             </Button>
           </Popconfirm>
@@ -320,31 +337,37 @@ export default function AdminProductsPage() {
         title={editingId !== null ? "Edit product" : "Add product"}
         open={isModalVisible}
         onOk={() => void handleModalOk()}
-        onCancel={() => setIsModalVisible(false)}
+        onCancel={() => {
+          if (!saving) setIsModalVisible(false);
+        }}
+        confirmLoading={saving}
+        okButtonProps={{ disabled: saving }}
+        cancelButtonProps={{ disabled: saving }}
+        maskClosable={!saving}
         width="min(800px, 92vw)"
       >
         <Form form={form} layout="vertical">
           <Space size="large" style={{ display: "flex" }} wrap>
-            <Form.Item name="provider" label="Provider" rules={[{ required: true }]}>
-              <Input placeholder="e.g. Vultr" />
+            <Form.Item name="provider" label="Provider" rules={[{ required: true, whitespace: true, max: 100, message: "Required, up to 100 characters." }]}>
+              <Input placeholder="e.g. Vultr" maxLength={100} />
             </Form.Item>
-            <Form.Item name="name" label="Product name" rules={[{ required: true }]}>
-              <Input placeholder="e.g. Cloud Compute" style={{ width: 250 }} />
+            <Form.Item name="name" label="Product name" rules={[{ required: true, whitespace: true, max: 100, message: "Required, up to 100 characters." }]}>
+              <Input placeholder="e.g. Cloud Compute" style={{ width: 250 }} maxLength={100} />
             </Form.Item>
-            <Form.Item name="location" label="Location" rules={[{ required: true }]}>
-              <Input placeholder="e.g. Los Angeles" />
+            <Form.Item name="location" label="Location" rules={[{ required: true, whitespace: true, max: 100, message: "Required, up to 100 characters." }]}>
+              <Input placeholder="e.g. Los Angeles" maxLength={100} />
             </Form.Item>
           </Space>
 
           <Space size="large" style={{ display: "flex" }} wrap>
             <Form.Item name="cpu" label="CPU cores" rules={[{ required: true }]}>
-              <InputNumber min={1} precision={0} />
+              <InputNumber min={1} max={128} precision={0} />
             </Form.Item>
             <Form.Item name="memory" label="Memory (GB)" rules={[{ required: true }]}>
-              <InputNumber min={0.1} step={0.1} />
+              <InputNumber min={0.1} max={1024} step={0.1} />
             </Form.Item>
             <Form.Item name="disk" label="Disk (GB)" rules={[{ required: true }]}>
-              <InputNumber min={1} />
+              <InputNumber min={1} max={10240} />
             </Form.Item>
           </Space>
 
@@ -356,7 +379,7 @@ export default function AdminProductsPage() {
             >
               <Input.Group compact>
                 <Form.Item name="monthlyTrafficValue" noStyle rules={[{ required: true }]}>
-                  <InputNumber min={0} style={{ width: "60%" }} />
+                  <InputNumber min={0} max={10000000} style={{ width: "60%" }} />
                 </Form.Item>
                 <Form.Item name="monthlyTrafficUnit" noStyle>
                   <Select style={{ width: "40%" }}>
@@ -374,7 +397,7 @@ export default function AdminProductsPage() {
             >
               <Input.Group compact>
                 <Form.Item name="bandwidthValue" noStyle rules={[{ required: true }]}>
-                  <InputNumber min={1} style={{ width: "60%" }} />
+                  <InputNumber min={1} max={1000000} style={{ width: "60%" }} />
                 </Form.Item>
                 <Form.Item name="bandwidthUnit" noStyle>
                   <Select style={{ width: "40%" }}>
@@ -388,25 +411,25 @@ export default function AdminProductsPage() {
             <Form.Item label="Annual price" required>
               <Input.Group compact>
                 <Form.Item name="price" noStyle rules={[{ required: true }]}>
-                  <InputNumber min={0} step={0.01} style={{ width: "60%" }} />
+                  <InputNumber min={0} max={1000000} step={0.01} style={{ width: "60%" }} />
                 </Form.Item>
-                <Form.Item name="currency" noStyle rules={[{ required: true, len: 3 }]}>
+                <Form.Item name="currency" noStyle rules={[{ required: true, len: 3, pattern: /^[A-Za-z]{3}$/, message: "3 letters (e.g. USD)." }]}>
                   <Input placeholder="USD" style={{ width: "40%" }} maxLength={3} />
                 </Form.Item>
               </Input.Group>
             </Form.Item>
           </Space>
 
-          <Form.Item name="affiliateUrl" label="Affiliate URL" rules={[{ required: true, type: "url" }]}>
-            <Input placeholder="https://provider.com/order?aff=..." />
+          <Form.Item name="affiliateUrl" label="Affiliate URL" rules={[{ required: true, type: "url", max: 2048 }]}>
+            <Input placeholder="https://provider.com/order?aff=..." maxLength={2048} />
           </Form.Item>
 
-          <Form.Item name="reviewUrl" label="Review URL" rules={[{ type: "url" }]}>
-            <Input placeholder="https://yourblog.com/review/..." />
+          <Form.Item name="reviewUrl" label="Review URL" rules={[{ type: "url", max: 2048 }]}>
+            <Input placeholder="https://yourblog.com/review/..." maxLength={2048} />
           </Form.Item>
 
           <Form.Item name="remark" label="Remark">
-            <Input.TextArea placeholder="Optional notes shown to users (e.g. limited stock, promo code)" />
+            <Input.TextArea placeholder="Optional notes shown to users (e.g. limited stock, promo code)" maxLength={1000} showCount />
           </Form.Item>
         </Form>
       </Modal>

@@ -32,6 +32,10 @@
   letter-spacing: -0.02em;
   color: var(--ink) !important;
   line-height: 1.2;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .title a {

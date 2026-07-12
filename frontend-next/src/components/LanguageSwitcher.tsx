@@ -27,8 +27,13 @@ export default function LanguageSwitcher({ locale }: { locale: Locale }) {
     : `/${targetLocale}`;
 
   const handleClick = useCallback(() => {
+    // localStorage 写入失败（隐私模式 / 配额超额）不应阻断导航。
     if (typeof window !== "undefined") {
-      localStorage.setItem("lang", targetLocale);
+      try {
+        localStorage.setItem("lang", targetLocale);
+      } catch {
+        // 静默忽略——偏好记忆是增强功能，非必需。
+      }
     }
     router.push(targetPath || `/${targetLocale}`);
   }, [router, targetPath, targetLocale]);

@@ -20,6 +20,11 @@ export default function AdminAnnouncementPage() {
   const [loading, setLoading] = useState(false);
   const [savingZh, setSavingZh] = useState(false);
   const [savingEn, setSavingEn] = useState(false);
+  // 加载时的初始内容快照——用于判断是否有未保存改动。
+  const [zhSnapshot, setZhSnapshot] = useState("");
+  const [enSnapshot, setEnSnapshot] = useState("");
+  // 当前激活的 Tab key，用于切换 Tab 时的未保存提示。
+  const [activeTab, setActiveTab] = useState("zh");
 
   useEffect(() => {
     let cancelled = false;
@@ -32,6 +37,8 @@ export default function AdminAnnouncementPage() {
         const en = items.find((item) => item.configKey === "announcement_en");
         setZhContent(zh?.configValue || "");
         setEnContent(en?.configValue || "");
+        setZhSnapshot(zh?.configValue || "");
+        setEnSnapshot(en?.configValue || "");
       } catch (error) {
         if (!cancelled) message.error(getApiErrorMessage(error) || "Couldn't load the announcements. Please refresh the page and try again.");
       } finally {
@@ -53,11 +60,31 @@ export default function AdminAnnouncementPage() {
     try {
       await adminUpdateConfig(key, value);
       message.success("Announcement saved.");
+      // 保存成功后刷新快照，使 dirty 状态正确归零。
+      if (key === "announcement_zh") setZhSnapshot(value);
+      if (key === "announcement_en") setEnSnapshot(value);
     } catch (error) {
       message.error(getApiErrorMessage(error) || "Couldn't save the announcement. Please try again.");
     } finally {
       setSaving(false);
     }
+  };
+
+  // 切换 Tab 前检查是否有未保存改动，提示用户确认丢弃。
+  const handleTabChange = (nextKey: string) => {
+    const currentDirty =
+      (activeTab === "zh" && zhContent !== zhSnapshot) ||
+      (activeTab === "en" && enContent !== enSnapshot);
+    if (currentDirty) {
+      const confirmed = window.confirm(
+        "You have unsaved changes. Switching tabs will discard them. Continue?"
+      );
+      if (!confirmed) return;
+      // 丢弃未保存改动，恢复到上次保存的快照。
+      if (activeTab === "zh") setZhContent(zhSnapshot);
+      if (activeTab === "en") setEnContent(enSnapshot);
+    }
+    setActiveTab(nextKey);
   };
 
   const renderEditor = (
@@ -73,6 +100,8 @@ export default function AdminAnnouncementPage() {
           value={content}
           onChange={(event) => setContent(event.target.value)}
           rows={20}
+          maxLength={10000}
+          showCount
           placeholder="Write your announcement here. Markdown is supported."
           style={{ fontFamily: "monospace" }}
         />
@@ -104,7 +133,8 @@ export default function AdminAnnouncementPage() {
   return (
     <Card title="Announcement Management" loading={loading}>
       <Tabs
-        defaultActiveKey="zh"
+        activeKey={activeTab}
+        onChange={handleTabChange}
         items={[
           {
             key: "zh",

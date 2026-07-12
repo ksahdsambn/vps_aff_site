@@ -119,6 +119,7 @@ const FilterBar: React.FC<FilterBarProps> = ({ onFilterChange, initialProviders 
           <Search
             placeholder={t("filter.keywordPlaceholder")}
             allowClear
+            maxLength={100}
             onSearch={(val) => {
               const normalizedValue = val.trim();
               setKeyword(normalizedValue);
@@ -136,6 +137,7 @@ const FilterBar: React.FC<FilterBarProps> = ({ onFilterChange, initialProviders 
           <Search
             placeholder={t("filter.locationPlaceholder")}
             allowClear
+            maxLength={100}
             onSearch={(val) => {
               const normalizedValue = val.trim();
               setLocation(normalizedValue);

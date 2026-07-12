@@ -58,6 +58,8 @@
   margin: 0 !important;
   letter-spacing: -0.02em;
   line-height: 1.15;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .priceBlock {
@@ -129,6 +131,8 @@
   font-size: 0.9375rem !important;
   color: var(--text) !important;
   line-height: 1.7;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .actions {

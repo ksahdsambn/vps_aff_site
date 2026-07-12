@@ -67,30 +67,36 @@ const HomeClient: React.FC<HomeClientProps> = ({
   const [sorter, setSorter] = useState<SorterState>({});
   const currentPage = pagination.current;
   const currentPageSize = pagination.pageSize;
+  // 在途请求的 AbortController——快速切换筛选/排序/分页时取消上一个请求，
+  // 避免 race condition（后发的请求先返回被先发的覆盖）。
+  const abortRef = useRef<AbortController | null>(null);
+  // onboarding 防重入：连续点击多个 preset 会堆叠 setTimeout 与重复 state 写入。
+  const applyingOnboarding = useRef(false);
 
   const loadProducts = useCallback(
-    async (cancelled: { current: boolean }) => {
+    async (signal: AbortSignal) => {
       setLoading(true);
       try {
         const params: GetProductsParams = {
           page: currentPage,
           pageSize: currentPageSize,
           ...filters,
+          signal,
         };
         if (sorter.field && sorter.order) {
           params.sortField = sorter.field;
           params.sortOrder = sorter.order;
         }
         const data = await getProducts(params);
-        if (cancelled.current) return;
-        setProducts(data.list);
+        if (signal.aborted) return;
+        setProducts(data.list ?? []);
         setPagination((prev) => ({ ...prev, total: data.total }));
       } catch (error) {
-        if (!cancelled.current) {
-          message.error(getApiErrorMessage(error) || t("common.networkError"));
-        }
+        // AbortError 是预期的（快速切换时取消在途请求），不应提示用户。
+        if (signal.aborted || (error instanceof Error && error.name === "AbortError")) return;
+        message.error(getApiErrorMessage(error) || t("common.networkError"));
       } finally {
-        if (!cancelled.current) setLoading(false);
+        if (!signal.aborted) setLoading(false);
       }
     },
     [currentPage, currentPageSize, filters, sorter, t]
@@ -103,10 +109,13 @@ const HomeClient: React.FC<HomeClientProps> = ({
       isFirstRender.current = false;
       return;
     }
-    const cancelled = { current: false };
-    void loadProducts(cancelled);
+    // 取消上一个在途请求，再发起新请求。
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    void loadProducts(controller.signal);
     return () => {
-      cancelled.current = true;
+      controller.abort();
     };
   }, [loadProducts]);
 
@@ -152,6 +161,9 @@ const HomeClient: React.FC<HomeClientProps> = ({
   };
 
   const handleOnboardingStart = (preset: OnboardingPreset) => {
+    // 防重入：连续点击多个 preset 会堆叠 setTimeout 与重复 state 写入。
+    if (applyingOnboarding.current) return;
+    applyingOnboarding.current = true;
     const onboardingSort: Record<OnboardingPreset, SorterState> = {
       value: { field: "price", order: "asc" },
       performance: { field: "cpu", order: "desc" },
@@ -162,6 +174,7 @@ const HomeClient: React.FC<HomeClientProps> = ({
     setPagination((prev) => ({ ...prev, current: 1 }));
     window.setTimeout(() => {
       document.getElementById("vps-results")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      applyingOnboarding.current = false;
     }, 0);
   };
 
@@ -186,7 +199,9 @@ const HomeClient: React.FC<HomeClientProps> = ({
 
         {/* 桌面表格（≥1200px）。两套视图同时存在于 SSG HTML，仅靠 CSS 显隐。 */}
         <div className="desktopOnly">
-          {loading ? (
+          {/* Stale-while-revalidate：仅首次加载（无数据）时显示骨架屏，
+              后续筛选/排序/分页保留旧数据 + loading 指示，避免表格消失丢失上下文。 */}
+          {loading && products.length === 0 ? (
             <ProductSkeleton viewMode="table" />
           ) : (
             <ProductTable
@@ -200,7 +215,7 @@ const HomeClient: React.FC<HomeClientProps> = ({
 
         {/* 移动卡片（<1200px，含平板与手机）。 */}
         <div className="mobileOnly">
-          {loading ? (
+          {loading && products.length === 0 ? (
             <ProductSkeleton viewMode="card" />
           ) : (
             <ProductCardList

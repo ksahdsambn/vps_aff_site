@@ -34,11 +34,18 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   const screens = useBreakpoint();
   const isDesktop = Boolean(screens.lg);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  // 登出中状态：禁用按钮 + loading，防止重复点击发送多个 /admin/logout 请求。
+  const [loggingOut, setLoggingOut] = useState(false);
 
   const handleLogout = async () => {
-    // 服务端吊销并清除 HttpOnly Cookie；网络失败也不阻断本地跳转。
-    await adminLogout();
-    router.replace("/admin/login");
+    if (loggingOut) return;
+    setLoggingOut(true);
+    try {
+      // 服务端吊销并清除 HttpOnly Cookie；网络失败也不阻断本地跳转。
+      await adminLogout();
+    } finally {
+      router.replace("/admin/login");
+    }
   };
 
   const menuItems = [
@@ -174,6 +181,8 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
               size="middle"
               icon={<LogoutOutlined />}
               onClick={handleLogout}
+              loading={loggingOut}
+              disabled={loggingOut}
             >
               Logout
             </Button>
