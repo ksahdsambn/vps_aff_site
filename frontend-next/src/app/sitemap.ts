@@ -67,16 +67,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // 服务商页 × 2 语言
   for (const name of providers) {
+    const encodedName = encodeURIComponent(name);
     for (const locale of locales) {
       entries.push({
-        url: `${siteUrl}/${locale}/providers/${name}`,
+        url: `${siteUrl}/${locale}/providers/${encodedName}`,
         lastModified: lastmod,
         changeFrequency: "weekly",
         priority: 0.6,
         alternates: {
           languages: {
-            "zh-CN": `${siteUrl}/zh/providers/${name}`,
-            en: `${siteUrl}/en/providers/${name}`,
+          "zh-CN": `${siteUrl}/zh/providers/${encodedName}`,
+          en: `${siteUrl}/en/providers/${encodedName}`,
           },
         },
       });

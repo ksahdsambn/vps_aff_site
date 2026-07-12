@@ -49,8 +49,8 @@ export interface ProductFormData {
   location: string;
   price: number;
   currency: string;
-  reviewUrl?: string;
-  remark?: string;
+  reviewUrl?: string | null;
+  remark?: string | null;
   affiliateUrl: string;
 }
 
@@ -74,7 +74,6 @@ export interface SystemConfigItem {
 }
 
 export interface LoginResponse {
-  token: string;
   expiresIn: number;
 }
 
@@ -216,24 +215,15 @@ export async function getAdminApi() {
     baseURL: API_BASE,
     timeout: 15000,
     headers: { "Content-Type": "application/json" },
+    withCredentials: true,
   });
 
-  // 请求拦截：附加 JWT
-  instance.interceptors.request.use((config) => {
-    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  });
-
-  // 响应拦截：401 清理 token 并跳转登录
+  // 响应拦截：401 跳转登录；会话位于 HttpOnly Cookie，前端不可读也无需清理。
   instance.interceptors.response.use(
     (response) => {
       const data = response.data as ApiResponse<unknown>;
       if (data?.code === 401) {
         if (typeof window !== "undefined") {
-          localStorage.removeItem("token");
           if (!window.location.pathname.startsWith("/admin/login")) {
             window.location.href = "/admin/login";
           }
@@ -244,7 +234,6 @@ export async function getAdminApi() {
     },
     (error) => {
       if (error?.response?.status === 401 && typeof window !== "undefined") {
-        localStorage.removeItem("token");
         if (!window.location.pathname.startsWith("/admin/login")) {
           window.location.href = "/admin/login";
         }
@@ -275,39 +264,33 @@ export function getApiStatusCode(err: unknown): number | undefined {
   return undefined;
 }
 
-/** 本地解析 JWT 是否过期（避免无效请求）。 */
-export function isTokenExpired(token: string | null): boolean {
-  if (!token) return true;
-  try {
-    const parts = token.split(".");
-    if (parts.length !== 3) return true;
-    const payload = JSON.parse(
-      atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"))
-    ) as { exp?: number };
-    if (!payload.exp) return false;
-    return Date.now() >= payload.exp * 1000 - 1000;
-  } catch {
-    return true;
-  }
-}
-
 // ============ Admin API 调用封装（客户端组件使用）============
 //
 // 以下函数在客户端组件中调用，返回解包后的数据（已校验 code===0）。
-// 使用动态 getAdminApi() 获取带 JWT 拦截器的 axios 实例。
+// 使用动态 getAdminApi() 获取带会话 Cookie 的 axios 实例（withCredentials）。
 
-/** 登录，返回 token。 */
+/** 登录，服务端通过 HttpOnly Cookie 下发会话，仅返回过期时间。 */
 export async function adminLogin(
   username: string,
   password: string
-): Promise<{ token: string; expiresIn: number }> {
+): Promise<LoginResponse> {
   const api = await getAdminApi();
-  const res = await api.post<ApiResponse<{ token: string; expiresIn: number }>>(
+  const res = await api.post<ApiResponse<LoginResponse>>(
     "/admin/login",
     { username, password }
   );
   if (res.data.code !== 0 || !res.data.data) {
     throw new Error(res.data.message || "Login failed");
+  }
+  return res.data.data;
+}
+
+/** 验证当前 HttpOnly 管理员会话。 */
+export async function adminGetSession(): Promise<{ expiresAt: number }> {
+  const api = await getAdminApi();
+  const res = await api.get<ApiResponse<{ expiresAt: number }>>("/admin/session");
+  if (res.data.code !== 0 || !res.data.data) {
+    throw new Error(res.data.message || "Session expired.");
   }
   return res.data.data;
 }

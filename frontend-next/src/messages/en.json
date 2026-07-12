@@ -54,7 +54,7 @@
     "priceSortTip": "Prices are sorted by numeric value across different currencies, so the order is for reference only.",
     "reviewLink": "View review",
     "orderButton": "Order",
-    "noData": "No products match your filters. Try adjusting or clearing them.",
+    "noData": "No plans match these filters. Try clearing one or more, or adjust your search.",
     "noReview": "—",
     "noRemark": "—",
     "total": "Total {{total}} items",
@@ -92,8 +92,8 @@
       "passwordPlaceholder": "Enter your password",
       "passwordRequired": "Please enter your password",
       "submit": "Sign in",
-      "loginFailed": "Incorrect username or password. Please try again.",
-      "rateLimited": "Too many sign-in attempts. Please wait a minute and try again."
+      "loginFailed": "That username or password didn't match. Please try again.",
+      "rateLimited": "Too many sign-in attempts. For your account's safety, please wait about 15 minutes before trying again."
     },
     "layout": {
       "title": "VPS AFF Admin",

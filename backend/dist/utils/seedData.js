@@ -3,6 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.shouldSeedSampleProducts = shouldSeedSampleProducts;
 exports.seedDatabase = seedDatabase;
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const secrets_1 = require("./secrets");
@@ -87,7 +88,11 @@ const PAGINATION_SAMPLE_PRODUCTS = Array.from({ length: 48 }, (_, index) => {
     };
 });
 const SAMPLE_PRODUCTS = [...CORE_SAMPLE_PRODUCTS, ...PAGINATION_SAMPLE_PRODUCTS];
-async function seedDatabase(prisma) {
+/** 样例产品必须由调用方显式请求，避免空生产库发布 example.com 数据。 */
+function shouldSeedSampleProducts(options = {}) {
+    return options.includeSampleProducts === true;
+}
+async function seedDatabase(prisma, options = {}) {
     const adminPassword = (0, secrets_1.getAdminSeedPassword)();
     // 仅当提供了 ADMIN_PASSWORD 时才 upsert 管理员账号。
     // 生产环境缺失会由 getAdminSeedPassword 抛错并在 seedRuntime 中以非零码退出。
@@ -110,7 +115,7 @@ async function seedDatabase(prisma) {
         });
     }
     const productCount = await prisma.product.count();
-    if (productCount === 0) {
+    if (shouldSeedSampleProducts(options) && productCount === 0) {
         await prisma.product.createMany({
             data: SAMPLE_PRODUCTS,
         });

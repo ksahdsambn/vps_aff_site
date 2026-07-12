@@ -17,9 +17,10 @@ services:
     networks:
       - app_network
 
-  backend:
+  migrate:
     build:
       context: ./backend
+      target: builder
     depends_on:
       db:
         condition: service_healthy
@@ -28,6 +29,34 @@ services:
       PORT: ${PORT}
       JWT_SECRET: ${JWT_SECRET}
       CORS_ORIGIN: ${CORS_ORIGIN}
+      TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-1}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      DATABASE_URL: mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@db:3306/${MYSQL_DATABASE}
+      DATABASE_HOST: db
+      DATABASE_PORT: "3306"
+      DATABASE_USER: ${MYSQL_USER}
+      DATABASE_PASSWORD: ${MYSQL_PASSWORD}
+      DATABASE_NAME: ${MYSQL_DATABASE}
+    command: ["sh", "-c", "npx prisma migrate deploy && node dist/scripts/seedRuntime.js"]
+    restart: "no"
+    networks:
+      - app_network
+
+  backend:
+    build:
+      context: ./backend
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      NODE_ENV: production
+      PORT: ${PORT}
+      JWT_SECRET: ${JWT_SECRET}
+      CORS_ORIGIN: ${CORS_ORIGIN}
+      TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-1}
       ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
       DATABASE_URL: mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@db:3306/${MYSQL_DATABASE}

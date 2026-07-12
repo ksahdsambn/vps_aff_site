@@ -28,7 +28,10 @@ const adapter = new PrismaMariaDb({
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
-  await seedDatabase(prisma);
+  // 演示产品需要显式开启，避免本地/生产误执行 seed 时写入虚假推广数据。
+  await seedDatabase(prisma, {
+    includeSampleProducts: process.env.SEED_SAMPLE_PRODUCTS === 'true',
+  });
   console.log('Seed data created successfully');
 }
 

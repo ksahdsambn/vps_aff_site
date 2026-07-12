@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Form, Input, message } from "antd";
 import { UserOutlined, LockOutlined } from "@ant-design/icons";
 import { useRouter } from "next/navigation";
-import { adminLogin, getApiErrorMessage } from "@/lib/api";
+import { adminLogin, getApiErrorMessage, getApiStatusCode } from "@/lib/api";
 import Button from "@/components/ui/Button";
 import styles from "./Login.module.css";
 
@@ -27,12 +27,18 @@ export default function LoginPage() {
   const onFinish = async (values: LoginFormValues) => {
     setLoading(true);
     try {
-      const { token } = await adminLogin(values.username, values.password);
-      localStorage.setItem("token", token);
+      await adminLogin(values.username, values.password);
       message.success("Signed in.");
       router.push("/admin/products");
     } catch (error: unknown) {
-      message.error(getApiErrorMessage(error) || "Couldn't sign in. Please try again.");
+      // Rate-limited sign-in (backend code 1002 / HTTP 429). Show a clear,
+      // actionable message rather than the raw backend text.
+      const code = getApiStatusCode(error);
+      if (code === 1002) {
+        message.error("Too many sign-in attempts. For your account's safety, please wait about 15 minutes before trying again.");
+        return;
+      }
+      message.error(getApiErrorMessage(error) || "That username or password didn't match. Please try again.");
     } finally {
       setLoading(false);
     }

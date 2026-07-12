@@ -54,8 +54,6 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
   }
 
   const isZh = locale === "zh";
-  const cores = isZh ? "核" : "Cores";
-
   // JSON-LD：Product + Offer + BreadcrumbList（统一封装到 lib/seo.ts）
   const productJsonLd = generateProductJsonLd(product, locale);
   const breadcrumbJsonLd = generateBreadcrumbJsonLd([

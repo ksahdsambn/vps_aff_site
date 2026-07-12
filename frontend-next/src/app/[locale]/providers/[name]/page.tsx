@@ -119,6 +119,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale: rawLocale, name } = await params;
   const locale = resolveLocale(rawLocale);
+  const encodedName = encodeURIComponent(name);
 
   const title =
     locale === "zh" ? `${name} VPS 产品价格对比` : `${name} VPS Products & Pricing`;
@@ -131,17 +132,17 @@ export async function generateMetadata({
     title,
     description,
     alternates: {
-      canonical: `${SITE_URL}/${locale}/providers/${name}`,
+      canonical: `${SITE_URL}/${locale}/providers/${encodedName}`,
       languages: {
-        "zh-CN": `${SITE_URL}/zh/providers/${name}`,
-        en: `${SITE_URL}/en/providers/${name}`,
-        "x-default": `${SITE_URL}/zh/providers/${name}`,
+        "zh-CN": `${SITE_URL}/zh/providers/${encodedName}`,
+        en: `${SITE_URL}/en/providers/${encodedName}`,
+        "x-default": `${SITE_URL}/zh/providers/${encodedName}`,
       },
     },
     openGraph: {
       title,
       description,
-      url: `${SITE_URL}/${locale}/providers/${name}`,
+      url: `${SITE_URL}/${locale}/providers/${encodedName}`,
       type: "website",
     },
   };

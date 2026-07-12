@@ -64,6 +64,8 @@ const Home: React.FC = () => {
   });
   const [filters, setFilters] = useState<FilterValues>({});
   const [sorter, setSorter] = useState<SorterState>({});
+  const currentPage = pagination.current;
+  const currentPageSize = pagination.pageSize;
 
   const isSmallScreen = windowWidth < 1200;
 
@@ -101,8 +103,8 @@ const Home: React.FC = () => {
 
     try {
       const params: ProductListParams = {
-        page: pagination.current,
-        pageSize: pagination.pageSize,
+        page: currentPage,
+        pageSize: currentPageSize,
         ...filters,
       };
 
@@ -132,7 +134,7 @@ const Home: React.FC = () => {
         setLoading(false);
       }
     }
-  }, [pagination.current, pagination.pageSize, filters, sorter]);
+  }, [currentPage, currentPageSize, filters, sorter]);
 
   useEffect(() => {
     const cancelled = { current: false };
@@ -253,4 +255,3 @@ const Home: React.FC = () => {
 };
 
 export default Home;
-

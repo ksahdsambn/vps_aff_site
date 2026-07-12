@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import AntdThemeProvider from "@/components/AntdThemeProvider";
+import { AntdRegistry } from "@ant-design/nextjs-registry";
+import "../globals.css";
 
 /**
  * Admin 根布局（仅 metadata + AntD 主题，不含 AuthGuard）。
@@ -16,5 +18,9 @@ export const metadata: Metadata = {
 };
 
 export default function AdminRootLayout({ children }: { children: React.ReactNode }) {
-  return <AntdThemeProvider>{children}</AntdThemeProvider>;
+  return (
+    <html lang="zh-CN">
+      <body><AntdRegistry><AntdThemeProvider>{children}</AntdThemeProvider></AntdRegistry></body>
+    </html>
+  );
 }

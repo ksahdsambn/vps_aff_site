@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { auth } from '../middleware/auth';
-import { loginLimiter } from '../middleware/rateLimiter';
+import { loginIpLimiter, loginUsernameLimiter } from '../middleware/rateLimiter';
 import {
   login,
   logout,
@@ -10,16 +10,20 @@ import {
   getAdminProducts,
   getAdminConfig,
   updateConfig,
+  getSession,
 } from '../controllers/adminController';
 
 const router = Router();
 
-// POST /api/admin/login — 管理员登录（loginLimiter 保护）
-router.post('/login', loginLimiter, login);
+// POST /api/admin/login — 同时按来源 IP 与用户名限速
+router.post('/login', loginIpLimiter, loginUsernameLimiter, login);
 
 // 以下路由均需 JWT 认证
 // POST /api/admin/logout — 登出（服务端吊销当前 token）
 router.post('/logout', auth, logout);
+
+// GET /api/admin/session — 前端路由守卫校验 HttpOnly 会话
+router.get('/session', auth, getSession);
 
 // GET /api/admin/products — 后台产品列表
 router.get('/products', auth, getAdminProducts);

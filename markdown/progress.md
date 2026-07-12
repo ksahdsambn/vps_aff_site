@@ -1427,3 +1427,60 @@ products/announcement/settings：清扫内联中性 hex（`#f0f0f0`/`#fffbe6`/`#
 | `frontend-next/src/app/admin/(dashboard)/settings/page.tsx` | 错误/成功 toast |
 | `frontend-next/src/app/admin/login/page.tsx` | 登录成功/错误 toast、表单验证消息 |
 | `frontend-next/src/lib/api.ts` | 中文字符串改英文（`未授权`/`未知错误`） |
+
+---
+
+## 2026-07-12 — 串行安全与质量修复（10 阶段）
+
+**执行 AI 模型：Codex（GPT-5）**
+
+按“前一阶段测试通过才进入下一阶段”的门禁执行，未并行推进阶段。所有阶段已放行。
+
+| 阶段 | 完成内容 | 验证与结论 |
+|---|---|---|
+| 1 | 修复前端 Docker 的 npm 版本/锁文件兼容性及 standalone `public` 复制路径 | 无缓存 Docker build 成功，放行 |
+| 2 | 移除可伪造 XFF fallback；增加 IP + 用户名两道登录限速 | 后端编译、限速单测、Compose 校验通过，放行 |
+| 3 | 运行时 seed 不再写入示例推广产品 | seed 单测通过，放行 |
+| 4 | JWT 迁移为 HttpOnly Cookie；增加会话探测、CSRF 和安全响应头 | 后端测试、前端构建和运行镜像响应头验证通过，放行 |
+| 5 | 吊销/账号检查改为 fail-closed | 故障路径单测通过，放行 |
+| 6 | 修复可选字段清空及产品 ID/数值/长度校验 | 11 项后端单测与前端构建通过，放行 |
+| 7 | 按 locale 根布局输出正确 HTML lang，服务商 SEO URL 编码 | `/en`、`/zh` 实测通过且 SSG 保持，放行 |
+| 8 | 修复依赖漏洞；移除旧 prerender/Puppeteer；拆分 migrate 服务 | 前端审计 0 漏洞；backend runner 审计 0 漏洞，放行 |
+| 9 | 后端接入真实测试；清零 ESLint 警告；全 Compose 构建 | 后端 11/11、两前端 lint/build/audit、Compose build 全通过，放行 |
+| 10 | 更新开发记录和文件洞察文档 | 本表与 architecture.md 同步完成，放行 |
+
+### 最终验证摘要
+
+- `backend/npm test`：11/11 通过。
+- `frontend-next`：lint、production build、`npm audit --omit=dev` 均通过，审计为 0。
+- `frontend`（旧 Vite 前端）：lint/build/audit 均通过，审计为 0。
+- `docker compose build`：migrate、backend、frontend 三个镜像均成功。
+
+---
+
+## 2026-07-12 — 次要观察修复（代码审查收尾）
+
+针对上一轮代码审查中记录的 3 项"非阻塞"观察逐项处理。同时附带本轮 clarify 技能产出的 UX 文案优化与审查中发现的 api.ts 失效注释清理。
+
+### 修复内容
+
+| 文件 | 变化 | 说明 |
+|---|---|---|
+| `backend/src/utils/sessionCookie.ts` | 提取 `readAdminSessionCookie()`，重构 `hasAdminSessionCookie` | 原 `hasAdminSessionCookie` 通过 `{ ...req, headers: { ...req.headers, authorization: undefined } }` 构造合成请求剥离 Authorization 头——功能正确但笨拙。拆出"仅读 Cookie"的独立读取路径，CSRF 校验只走 Cookie 读取，与 `getAdminSessionToken` 的 Bearer 优先级语义彻底解耦。公共签名不变，`app.ts` 调用处零改动。 |
+| `frontend-next/next.config.ts` | CSP 头补充详细注释 | `'unsafe-inline'`（script-src/style-src）是 SSG 架构下的硬性约束：静态 `.html` 内嵌 Next.js RSC flight 内联 `<script>` 与 AntD CSS-in-JS 内联 `<style>`，构建期固化、无 per-request nonce。经核实 `.next/server/app/zh.html` 确含 `(self.__next_f=...).push(...)` 与 `<style id="antd-cssinjs">`。保留 `unsafe-inline` 但显式记录约束原因与"改 SSR + nonce-based CSP"的演进路径。 |
+| `.gitattributes`（新增） | 全仓 LF 行尾规范化 | 消除 Windows 检出（CRLF）与 Linux 容器（LF）的行尾差异，解决 git status 大量 LF→CRLF 警告。`* text=auto eol=lf` + 显式源码/二进制分类。 |
+| `frontend-next/src/messages/{en,zh}.json` | UX 文案优化（clarify 技能） | 修正登录限速提示时长（"wait a minute"→真实 15 分钟窗口）；空状态文案更具行动性；通用错误/成功消息更具体。 |
+| `frontend-next/src/app/admin/login/page.tsx` | 限速错误本地化 | 触发 code 1002 时显示清晰的英文限速提示，而非后端返回的原始中文。 |
+| `frontend-next/src/components/admin/AdminShell.tsx` | 导航标签统一英文 | 原"产品管理/公告管理/配置管理"与全英文 admin 界面混用，统一为 Products/Announcement/Settings。 |
+| `frontend-next/src/app/admin/(dashboard)/announcement/page.tsx` | 成功/错误 toast 具体化 | "Saved."→"Announcement saved."；错误回退更具体。 |
+| `frontend-next/src/lib/api.ts` | 清理失效注释 | 删除被删函数 `isTokenExpired` 的孤立 doc-comment；"登录，返回 token" 更正为反映 Cookie 会话现实的描述。 |
+
+### 验证
+
+- `backend`：`tsc --noEmit` 通过；`npm test` 11/11 通过（含 sessionCookie 两项测试，确认重构保持行为一致）。
+- `frontend-next`：`tsc --noEmit` 通过。
+
+### 部署操作
+
+- 工作区改动合并至 `master`，推送到 `origin`（GitHub）。
+

@@ -189,9 +189,9 @@ export default function AdminProductsPage() {
         if (currency !== editingRecord.currency) payload.currency = currency;
         const newReviewUrl = values.reviewUrl || null;
         if ((newReviewUrl ?? null) !== (editingRecord.reviewUrl ?? null))
-          payload.reviewUrl = values.reviewUrl;
+          payload.reviewUrl = newReviewUrl;
         const newRemark = values.remark || null;
-        if ((newRemark ?? null) !== (editingRecord.remark ?? null)) payload.remark = values.remark;
+        if ((newRemark ?? null) !== (editingRecord.remark ?? null)) payload.remark = newRemark;
         if (values.affiliateUrl !== editingRecord.affiliateUrl) payload.affiliateUrl = values.affiliateUrl;
 
         const trafficNormalized =
@@ -337,7 +337,7 @@ export default function AdminProductsPage() {
 
           <Space size="large" style={{ display: "flex" }}>
             <Form.Item name="cpu" label="CPU cores" rules={[{ required: true }]}>
-              <InputNumber min={1} />
+              <InputNumber min={1} precision={0} />
             </Form.Item>
             <Form.Item name="memory" label="Memory (GB)" rules={[{ required: true }]}>
               <InputNumber min={0.1} step={0.1} />

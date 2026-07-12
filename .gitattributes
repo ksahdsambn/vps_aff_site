@@ -1,0 +1,41 @@
+# 统一行尾：文本文件在仓库中始终以 LF 存储，无论检出平台。
+# 消除 Windows 检出（CRLF）与 Linux 容器（LF）之间的行尾差异，
+# 避免 git status 出现大量"伪改动"与合并冲突。
+#
+# * text=auto eol=lf：所有文本文件自动按 LF 规范化。
+# * binary：二进制类型不做行尾转换。
+
+* text=auto eol=lf
+
+# 源码 / 配置 / 文档（显式标注，确保跨工具一致）
+*.ts        text eol=lf
+*.tsx       text eol=lf
+*.js        text eol=lf
+*.cjs       text eol=lf
+*.mjs       text eol=lf
+*.json      text eol=lf
+*.css       text eol=lf
+*.html      text eol=lf
+*.md        text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+*.env*      text eol=lf
+*.sh        text eol=lf
+Dockerfile  text eol=lf
+
+# 二进制资源（不做行尾转换）
+*.png       binary
+*.jpg       binary
+*.jpeg      binary
+*.gif       binary
+*.ico       binary
+*.svg       binary
+*.webp      binary
+*.woff      binary
+*.woff2     binary
+*.ttf       binary
+*.otf       binary
+*.eot       binary
+*.pdf       binary
+*.zip       binary
+*.tar.gz    binary

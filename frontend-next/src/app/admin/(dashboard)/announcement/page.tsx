@@ -33,7 +33,7 @@ export default function AdminAnnouncementPage() {
         setZhContent(zh?.configValue || "");
         setEnContent(en?.configValue || "");
       } catch (error) {
-        if (!cancelled) message.error(getApiErrorMessage(error) || "Couldn't load the announcements. Please refresh the page.");
+        if (!cancelled) message.error(getApiErrorMessage(error) || "Couldn't load the announcements. Please refresh the page and try again.");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -52,9 +52,9 @@ export default function AdminAnnouncementPage() {
     setSaving(true);
     try {
       await adminUpdateConfig(key, value);
-      message.success("Saved.");
+      message.success("Announcement saved.");
     } catch (error) {
-      message.error(getApiErrorMessage(error) || "Couldn't save. Please try again.");
+      message.error(getApiErrorMessage(error) || "Couldn't save the announcement. Please try again.");
     } finally {
       setSaving(false);
     }

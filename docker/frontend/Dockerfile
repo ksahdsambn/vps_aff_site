@@ -9,7 +9,9 @@ WORKDIR /app
 
 # 复制 frontend-next 依赖清单并安装
 COPY frontend-next/package.json frontend-next/package-lock.json ./
-RUN npm ci
+# package-lock.json 由 npm 11 生成；在 builder 中固定相同 npm 版本，
+# 避免 npm 10 对可选 peer 依赖的解析差异导致 npm ci 失败。
+RUN npm install --global npm@11.6.2 && npm ci
 
 # 复制源码并构建（standalone 输出）
 COPY frontend-next/ ./
@@ -33,7 +35,7 @@ ENV HOSTNAME=0.0.0.0
 # 复制 standalone 输出（含最小化 node_modules）
 COPY --from=builder /app/.next/standalone ./
 # 复制静态资源（standalone 不含 public 和 .next/static，需手动复制）
-COPY --from=builder /app/.next/standalone/public ./public
+COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/static ./.next/static
 
 EXPOSE 3000

@@ -15,6 +15,14 @@ import {
 import { isSafeHttpUrl, isSafeOptionalHttpUrl } from '../utils/validators';
 import { generateJti, revokeToken } from '../utils/tokenRevocation';
 import { logError } from '../utils/logError';
+import { ADMIN_SESSION_COOKIE, adminSessionCookieOptions } from '../utils/sessionCookie';
+import {
+  PRODUCT_LIMITS,
+  parseStrictPositiveId,
+  validateOptionalText,
+  validateProductNumber,
+  validateRequiredText,
+} from '../utils/productValidation';
 
 /**
  * 允许通过 Admin API 更新的配置项 key 白名单。
@@ -74,76 +82,10 @@ function getDummyPasswordHash(): Promise<string> {
   return dummyHashPromise;
 }
 
-function normalizeRequiredString(value: unknown): string {
-  return typeof value === 'string' ? value.trim() : '';
-}
-
-function normalizeOptionalString(value: unknown): string | null {
-  if (value === undefined || value === null) {
-    return null;
-  }
-
-  if (typeof value !== 'string') {
-    return null;
-  }
-
-  const normalized = value.trim();
-  return normalized ? normalized : null;
-}
-
-function parseFiniteNumber(value: unknown): number | null {
-  if (typeof value === 'number') {
-    return Number.isFinite(value) ? value : null;
-  }
-
-  if (typeof value === 'string' && value.trim() !== '') {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-
-  return null;
-}
-
-/**
- * 校验数值字段。
- *
- * @param options.min        下限阈值（默认 0）。
- * @param options.inclusive  min 是否为闭区间（true: parsed >= min；false: parsed > min）。默认 false。
- *
- * 语义说明（使用数学区间术语，消除 allowZero 的歧义）：
- * - `{ min: 0 }`（inclusive 默认 false）          → 要求 parsed > 0，即 (0, +∞)，拒绝 0 和负数。
- * - `{ min: 0, inclusive: true }`                 → 要求 parsed >= 0，即 [0, +∞)，允许 0 但拒绝负数。
- * - `{ min: 1 }`（inclusive 默认 false）          → 要求 parsed > 1，即 (1, +∞)。
- * - `{ min: 1, inclusive: true }`                 → 要求 parsed >= 1，即 [1, +∞)。
- *
- * inclusive 一词来自数学区间（闭区间 [] / 开区间 ()），比 allowZero 更准确——
- * 后者仅在 min=0 时名字合理，当 min 非 0 时名字会产生误导。
- */
-function validateNumberField(
-  value: unknown,
-  field: string,
-  options: { min?: number; inclusive?: boolean } = {},
-): { value: number } | { error: string } {
-  const parsed = parseFiniteNumber(value);
-  if (parsed === null) {
-    return { error: `Field ${field} must be a valid number` };
-  }
-
-  const min = options.min ?? 0;
-  const isValid = options.inclusive ? parsed >= min : parsed > min;
-
-  if (!isValid) {
-    const operator = options.inclusive ? '>=' : '>';
-    return { error: `Field ${field} must be ${operator} ${min}` };
-  }
-
-  return { value: parsed };
-}
-
 function normalizeTrafficInput(value: unknown): { value: number } | { error: string } {
   if (typeof value === 'object' && value !== null) {
     const { value: rawValue, unit } = value as { value?: unknown; unit?: unknown };
-    const parsed = validateNumberField(rawValue, 'monthlyTraffic', { min: 0, inclusive: true });
+    const parsed = validateProductNumber(rawValue, 'monthlyTraffic', { min: 0, inclusive: true, max: PRODUCT_LIMITS.capacity });
     if ('error' in parsed) {
       return parsed;
     }
@@ -152,16 +94,19 @@ function normalizeTrafficInput(value: unknown): { value: number } | { error: str
       return { error: 'Field monthlyTraffic must use GB or TB' };
     }
 
-    return { value: unit === 'TB' ? parsed.value * 1000 : parsed.value };
+    const normalized = unit === 'TB' ? parsed.value * 1000 : parsed.value;
+    return normalized <= PRODUCT_LIMITS.capacity
+      ? { value: normalized }
+      : { error: `Field monthlyTraffic must be at most ${PRODUCT_LIMITS.capacity}` };
   }
 
-  return validateNumberField(value, 'monthlyTraffic', { min: 0, inclusive: true });
+  return validateProductNumber(value, 'monthlyTraffic', { min: 0, inclusive: true, max: PRODUCT_LIMITS.capacity });
 }
 
 function normalizeBandwidthInput(value: unknown): { value: number } | { error: string } {
   if (typeof value === 'object' && value !== null) {
     const { value: rawValue, unit } = value as { value?: unknown; unit?: unknown };
-    const parsed = validateNumberField(rawValue, 'bandwidth', { min: 0 });
+    const parsed = validateProductNumber(rawValue, 'bandwidth', { min: 0, max: PRODUCT_LIMITS.capacity });
     if ('error' in parsed) {
       return parsed;
     }
@@ -170,15 +115,18 @@ function normalizeBandwidthInput(value: unknown): { value: number } | { error: s
       return { error: 'Field bandwidth must use Mbps or Gbps' };
     }
 
-    return { value: unit === 'Gbps' ? parsed.value * 1000 : parsed.value };
+    const normalized = unit === 'Gbps' ? parsed.value * 1000 : parsed.value;
+    return normalized <= PRODUCT_LIMITS.capacity
+      ? { value: normalized }
+      : { error: `Field bandwidth must be at most ${PRODUCT_LIMITS.capacity}` };
   }
 
-  return validateNumberField(value, 'bandwidth', { min: 0 });
+  return validateProductNumber(value, 'bandwidth', { min: 0, max: PRODUCT_LIMITS.capacity });
 }
 
 export async function login(req: AuthRequest, res: Response, _next: NextFunction): Promise<void> {
   try {
-    const username = normalizeRequiredString(req.body.username);
+    const username = typeof req.body.username === 'string' ? req.body.username.trim() : '';
     const password = typeof req.body.password === 'string' ? req.body.password : '';
 
     if (!username || !password) {
@@ -214,10 +162,11 @@ export async function login(req: AuthRequest, res: Response, _next: NextFunction
       data: { lastLoginAt: new Date() },
     });
 
-    successResponse(res, {
-      token,
-      expiresIn: TOKEN_EXPIRES_IN_SECONDS,
+    res.cookie(ADMIN_SESSION_COOKIE, token, {
+      ...adminSessionCookieOptions,
+      maxAge: TOKEN_EXPIRES_IN_SECONDS * 1000,
     });
+    successResponse(res, { expiresIn: TOKEN_EXPIRES_IN_SECONDS });
   } catch (error) {
     logError('Login error', error);
     errorResponse(res, ERROR_CODES.INTERNAL_ERROR, 'Internal server error', 500);
@@ -227,16 +176,16 @@ export async function login(req: AuthRequest, res: Response, _next: NextFunction
 export async function addProduct(req: AuthRequest, res: Response, _next: NextFunction): Promise<void> {
   try {
     const body: ProductCreateInput = req.body;
-    const provider = normalizeRequiredString(body.provider);
-    const name = normalizeRequiredString(body.name);
-    const location = normalizeRequiredString(body.location);
-    const affiliateUrl = normalizeRequiredString(body.affiliateUrl);
-    const currency = normalizeRequiredString(body.currency).toUpperCase();
+    const provider = validateRequiredText(body.provider, 'provider', PRODUCT_LIMITS.provider);
+    const name = validateRequiredText(body.name, 'name', PRODUCT_LIMITS.name);
+    const location = validateRequiredText(body.location, 'location', PRODUCT_LIMITS.location);
+    const affiliateUrl = validateRequiredText(body.affiliateUrl, 'affiliateUrl', PRODUCT_LIMITS.url);
+    const currency = typeof body.currency === 'string' ? body.currency.trim().toUpperCase() : '';
 
-    if (!provider || !name || !location || !affiliateUrl) {
-      errorResponse(res, ERROR_CODES.BAD_REQUEST, 'Required text fields cannot be empty', 400);
-      return;
-    }
+    if ('error' in provider) { errorResponse(res, ERROR_CODES.BAD_REQUEST, provider.error, 400); return; }
+    if ('error' in name) { errorResponse(res, ERROR_CODES.BAD_REQUEST, name.error, 400); return; }
+    if ('error' in location) { errorResponse(res, ERROR_CODES.BAD_REQUEST, location.error, 400); return; }
+    if ('error' in affiliateUrl) { errorResponse(res, ERROR_CODES.BAD_REQUEST, affiliateUrl.error, 400); return; }
 
     if (!/^[A-Z]{3}$/.test(currency)) {
       errorResponse(res, ERROR_CODES.BAD_REQUEST, 'Currency code must be a 3-letter ISO code', 400);
@@ -244,36 +193,40 @@ export async function addProduct(req: AuthRequest, res: Response, _next: NextFun
     }
 
     // affiliateUrl 必须为 http/https 协议，防止 javascript:/data: 等危险协议
-    if (!isSafeHttpUrl(affiliateUrl)) {
+    if (!isSafeHttpUrl(affiliateUrl.value)) {
       errorResponse(res, ERROR_CODES.BAD_REQUEST, 'affiliateUrl must be a valid http(s) URL', 400);
       return;
     }
 
     // reviewUrl 可选，但若提供必须为合法 http(s) URL
-    if (!isSafeOptionalHttpUrl(normalizeOptionalString(body.reviewUrl))) {
+    const reviewUrl = validateOptionalText(body.reviewUrl, 'reviewUrl', PRODUCT_LIMITS.url);
+    const remark = validateOptionalText(body.remark, 'remark', PRODUCT_LIMITS.remark);
+    if ('error' in reviewUrl) { errorResponse(res, ERROR_CODES.BAD_REQUEST, reviewUrl.error, 400); return; }
+    if ('error' in remark) { errorResponse(res, ERROR_CODES.BAD_REQUEST, remark.error, 400); return; }
+    if (!isSafeOptionalHttpUrl(reviewUrl.value)) {
       errorResponse(res, ERROR_CODES.BAD_REQUEST, 'reviewUrl must be a valid http(s) URL', 400);
       return;
     }
 
-    const cpu = validateNumberField(body.cpu, 'cpu', { min: 0 });
+    const cpu = validateProductNumber(body.cpu, 'cpu', { min: 0, integer: true, max: PRODUCT_LIMITS.cpu });
     if ('error' in cpu) {
       errorResponse(res, ERROR_CODES.BAD_REQUEST, cpu.error, 400);
       return;
     }
 
-    const memory = validateNumberField(body.memory, 'memory', { min: 0 });
+    const memory = validateProductNumber(body.memory, 'memory', { min: 0, max: PRODUCT_LIMITS.capacity });
     if ('error' in memory) {
       errorResponse(res, ERROR_CODES.BAD_REQUEST, memory.error, 400);
       return;
     }
 
-    const disk = validateNumberField(body.disk, 'disk', { min: 0 });
+    const disk = validateProductNumber(body.disk, 'disk', { min: 0, max: PRODUCT_LIMITS.capacity });
     if ('error' in disk) {
       errorResponse(res, ERROR_CODES.BAD_REQUEST, disk.error, 400);
       return;
     }
 
-    const price = validateNumberField(body.price, 'price', { min: 0, inclusive: true });
+    const price = validateProductNumber(body.price, 'price', { min: 0, inclusive: true, max: PRODUCT_LIMITS.price, decimalPlaces: 2 });
     if ('error' in price) {
       errorResponse(res, ERROR_CODES.BAD_REQUEST, price.error, 400);
       return;
@@ -293,19 +246,19 @@ export async function addProduct(req: AuthRequest, res: Response, _next: NextFun
 
     const product = await prisma.product.create({
       data: {
-        provider,
-        name,
+        provider: provider.value,
+        name: name.value,
         cpu: cpu.value,
         memory: memory.value,
         disk: disk.value,
         monthlyTraffic: monthlyTraffic.value,
         bandwidth: bandwidth.value,
-        location,
+        location: location.value,
         price: price.value,
         currency,
-        reviewUrl: normalizeOptionalString(body.reviewUrl),
-        remark: normalizeOptionalString(body.remark),
-        affiliateUrl,
+        reviewUrl: reviewUrl.value,
+        remark: remark.value,
+        affiliateUrl: affiliateUrl.value,
       },
     });
 
@@ -318,8 +271,8 @@ export async function addProduct(req: AuthRequest, res: Response, _next: NextFun
 
 export async function updateProduct(req: AuthRequest, res: Response, _next: NextFunction): Promise<void> {
   try {
-    const id = parseInt(String(req.params.id), 10);
-    if (Number.isNaN(id)) {
+    const id = parseStrictPositiveId(req.params.id);
+    if (id === null) {
       errorResponse(res, ERROR_CODES.BAD_REQUEST, 'Invalid product id', 400);
       return;
     }
@@ -337,25 +290,25 @@ export async function updateProduct(req: AuthRequest, res: Response, _next: Next
     const updateData: Record<string, unknown> = {};
 
     if (body.provider !== undefined) {
-      const provider = normalizeRequiredString(body.provider);
-      if (!provider) {
-        errorResponse(res, ERROR_CODES.BAD_REQUEST, 'Field provider cannot be empty', 400);
+      const provider = validateRequiredText(body.provider, 'provider', PRODUCT_LIMITS.provider);
+      if ('error' in provider) {
+        errorResponse(res, ERROR_CODES.BAD_REQUEST, provider.error, 400);
         return;
       }
-      updateData.provider = provider;
+      updateData.provider = provider.value;
     }
 
     if (body.name !== undefined) {
-      const name = normalizeRequiredString(body.name);
-      if (!name) {
-        errorResponse(res, ERROR_CODES.BAD_REQUEST, 'Field name cannot be empty', 400);
+      const name = validateRequiredText(body.name, 'name', PRODUCT_LIMITS.name);
+      if ('error' in name) {
+        errorResponse(res, ERROR_CODES.BAD_REQUEST, name.error, 400);
         return;
       }
-      updateData.name = name;
+      updateData.name = name.value;
     }
 
     if (body.cpu !== undefined) {
-      const cpu = validateNumberField(body.cpu, 'cpu', { min: 0 });
+      const cpu = validateProductNumber(body.cpu, 'cpu', { min: 0, integer: true, max: PRODUCT_LIMITS.cpu });
       if ('error' in cpu) {
         errorResponse(res, ERROR_CODES.BAD_REQUEST, cpu.error, 400);
         return;
@@ -364,7 +317,7 @@ export async function updateProduct(req: AuthRequest, res: Response, _next: Next
     }
 
     if (body.memory !== undefined) {
-      const memory = validateNumberField(body.memory, 'memory', { min: 0 });
+      const memory = validateProductNumber(body.memory, 'memory', { min: 0, max: PRODUCT_LIMITS.capacity });
       if ('error' in memory) {
         errorResponse(res, ERROR_CODES.BAD_REQUEST, memory.error, 400);
         return;
@@ -373,7 +326,7 @@ export async function updateProduct(req: AuthRequest, res: Response, _next: Next
     }
 
     if (body.disk !== undefined) {
-      const disk = validateNumberField(body.disk, 'disk', { min: 0 });
+      const disk = validateProductNumber(body.disk, 'disk', { min: 0, max: PRODUCT_LIMITS.capacity });
       if ('error' in disk) {
         errorResponse(res, ERROR_CODES.BAD_REQUEST, disk.error, 400);
         return;
@@ -382,16 +335,16 @@ export async function updateProduct(req: AuthRequest, res: Response, _next: Next
     }
 
     if (body.location !== undefined) {
-      const location = normalizeRequiredString(body.location);
-      if (!location) {
-        errorResponse(res, ERROR_CODES.BAD_REQUEST, 'Field location cannot be empty', 400);
+      const location = validateRequiredText(body.location, 'location', PRODUCT_LIMITS.location);
+      if ('error' in location) {
+        errorResponse(res, ERROR_CODES.BAD_REQUEST, location.error, 400);
         return;
       }
-      updateData.location = location;
+      updateData.location = location.value;
     }
 
     if (body.price !== undefined) {
-      const price = validateNumberField(body.price, 'price', { min: 0, inclusive: true });
+      const price = validateProductNumber(body.price, 'price', { min: 0, inclusive: true, max: PRODUCT_LIMITS.price, decimalPlaces: 2 });
       if ('error' in price) {
         errorResponse(res, ERROR_CODES.BAD_REQUEST, price.error, 400);
         return;
@@ -400,7 +353,7 @@ export async function updateProduct(req: AuthRequest, res: Response, _next: Next
     }
 
     if (body.currency !== undefined) {
-      const currency = normalizeRequiredString(body.currency).toUpperCase();
+      const currency = typeof body.currency === 'string' ? body.currency.trim().toUpperCase() : '';
       if (!/^[A-Z]{3}$/.test(currency)) {
         errorResponse(res, ERROR_CODES.BAD_REQUEST, 'Currency code must be a 3-letter ISO code', 400);
         return;
@@ -409,29 +362,34 @@ export async function updateProduct(req: AuthRequest, res: Response, _next: Next
     }
 
     if (body.reviewUrl !== undefined) {
-      const reviewUrl = normalizeOptionalString(body.reviewUrl);
-      if (!isSafeOptionalHttpUrl(reviewUrl)) {
+      const reviewUrl = validateOptionalText(body.reviewUrl, 'reviewUrl', PRODUCT_LIMITS.url);
+      if ('error' in reviewUrl || !isSafeOptionalHttpUrl(reviewUrl.value)) {
         errorResponse(res, ERROR_CODES.BAD_REQUEST, 'reviewUrl must be a valid http(s) URL', 400);
         return;
       }
-      updateData.reviewUrl = reviewUrl;
+      updateData.reviewUrl = reviewUrl.value;
     }
 
     if (body.remark !== undefined) {
-      updateData.remark = normalizeOptionalString(body.remark);
+      const remark = validateOptionalText(body.remark, 'remark', PRODUCT_LIMITS.remark);
+      if ('error' in remark) {
+        errorResponse(res, ERROR_CODES.BAD_REQUEST, remark.error, 400);
+        return;
+      }
+      updateData.remark = remark.value;
     }
 
     if (body.affiliateUrl !== undefined) {
-      const affiliateUrl = normalizeRequiredString(body.affiliateUrl);
-      if (!affiliateUrl) {
-        errorResponse(res, ERROR_CODES.BAD_REQUEST, 'Field affiliateUrl cannot be empty', 400);
+      const affiliateUrl = validateRequiredText(body.affiliateUrl, 'affiliateUrl', PRODUCT_LIMITS.url);
+      if ('error' in affiliateUrl) {
+        errorResponse(res, ERROR_CODES.BAD_REQUEST, affiliateUrl.error, 400);
         return;
       }
-      if (!isSafeHttpUrl(affiliateUrl)) {
+      if (!isSafeHttpUrl(affiliateUrl.value)) {
         errorResponse(res, ERROR_CODES.BAD_REQUEST, 'affiliateUrl must be a valid http(s) URL', 400);
         return;
       }
-      updateData.affiliateUrl = affiliateUrl;
+      updateData.affiliateUrl = affiliateUrl.value;
     }
 
     if (body.monthlyTraffic !== undefined) {
@@ -471,8 +429,8 @@ export async function updateProduct(req: AuthRequest, res: Response, _next: Next
 
 export async function deleteProduct(req: AuthRequest, res: Response, _next: NextFunction): Promise<void> {
   try {
-    const id = parseInt(String(req.params.id), 10);
-    if (Number.isNaN(id)) {
+    const id = parseStrictPositiveId(req.params.id);
+    if (id === null) {
       errorResponse(res, ERROR_CODES.BAD_REQUEST, 'Invalid product id', 400);
       return;
     }
@@ -572,7 +530,7 @@ export async function getAdminConfig(req: AuthRequest, res: Response, _next: Nex
 export async function updateConfig(req: AuthRequest, res: Response, _next: NextFunction): Promise<void> {
   try {
     const { configKey, configValue }: ConfigUpdateInput = req.body;
-    const normalizedConfigKey = normalizeRequiredString(configKey);
+    const normalizedConfigKey = typeof configKey === 'string' ? configKey.trim() : '';
 
     if (!normalizedConfigKey) {
       errorResponse(res, ERROR_CODES.BAD_REQUEST, 'configKey is required', 400);
@@ -585,7 +543,7 @@ export async function updateConfig(req: AuthRequest, res: Response, _next: NextF
       return;
     }
 
-    const normalizedValue = normalizeOptionalString(configValue) ?? '';
+    const normalizedValue = typeof configValue === 'string' ? configValue.trim() : '';
 
     // URL 类配置项必须通过 http(s) 协议校验，防止 javascript:/data: 等危险协议。
     // 此校验在 DB 查询之前执行，确保危险输入在任何 I/O 之前即被拒绝。
@@ -624,35 +582,26 @@ export async function updateConfig(req: AuthRequest, res: Response, _next: NextF
 /**
  * POST /api/admin/logout — 登出当前会话（服务端吊销 token）。
  *
- * 从 Authorization 头解析当前 token 的 jti 与 exp，写入 RevokedToken 表。
- * 即使客户端未清除 localStorage，该 token 在后续请求中也会被 auth 中间件拒绝。
+ * auth 已验证会话并附带 jti/exp；吊销写入成功后才清除 HttpOnly Cookie。
  */
 export async function logout(req: AuthRequest, res: Response, _next: NextFunction): Promise<void> {
   try {
-    // auth 中间件已校验 token 并将 admin 挂载到 req.admin，但未暴露 jti/exp。
-    // 此处从原始 token 重新解码（不验签——中间件已验过），取出 jti 与 exp。
-    const authHeader = req.headers.authorization;
-    const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
-
-    if (token) {
-      try {
-        const decoded = jwt.decode(token) as {
-          jti?: string;
-          adminId?: number;
-          exp?: number;
-        } | null;
-
-        if (decoded?.jti && decoded?.adminId && typeof decoded.exp === 'number') {
-          await revokeToken(decoded.jti, decoded.adminId, new Date(decoded.exp * 1000));
-        }
-      } catch {
-        // 解码失败不应阻断登出响应（客户端仍会清除本地 token）。
-      }
+    if (!req.admin) {
+      errorResponse(res, ERROR_CODES.UNAUTHORIZED, 'Unauthorized', 401);
+      return;
     }
 
+    await revokeToken(req.admin.jti, req.admin.adminId, new Date(req.admin.expiresAt));
+
+    res.clearCookie(ADMIN_SESSION_COOKIE, adminSessionCookieOptions);
     successResponse(res, { message: 'Logged out' });
   } catch (error) {
     logError('Logout error', error);
-    errorResponse(res, ERROR_CODES.INTERNAL_ERROR, 'Internal server error', 500);
+    errorResponse(res, ERROR_CODES.INTERNAL_ERROR, '认证服务暂不可用，请稍后再试', 503);
   }
+}
+
+/** GET /api/admin/session — 验证 HttpOnly 会话 Cookie，供前端路由守卫使用。 */
+export async function getSession(req: AuthRequest, res: Response, _next: NextFunction): Promise<void> {
+  successResponse(res, { expiresAt: req.admin?.expiresAt ?? 0 });
 }

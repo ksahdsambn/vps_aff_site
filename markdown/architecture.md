@@ -252,3 +252,48 @@
 | `backend/prisma/migrations/20260711120000_add_revoked_token/`（新增） | RevokedToken 建表 migration，由 `prisma migrate deploy` 执行 |
 | `backend/src/controllers/adminController.ts`（增强） | 登出控制器 + jti claim + HS256 签发 + getAdminConfig 字段收敛 + validateNumberField inclusive 语义 + 进程唯一 dummy hash |
 | `frontend-next/src/app/admin/(dashboard)/products/page.tsx`（增强） | 编辑产品 diff 算法浮点健壮性——`numChanged` 相对容差比较，防未改动字段因浮点往返偏差被误发送 |
+
+---
+
+## 2026-07-12 串行安全修复：文件职责
+
+| 文件 | 本轮职责/变化 |
+|---|---|
+| `.env.example` | 示例产品显式开关与可信代理配置说明。 |
+| `docker-compose.yml` | 一次性 `migrate` 服务；backend 仅在迁移成功后启动。 |
+| `docker/frontend/Dockerfile` | 固定 npm 11.6.2；从 `/app/public` 复制静态资源。 |
+| `backend/Dockerfile` | runner 只运行 API，并裁剪 dev/optional 依赖。 |
+| `backend/package.json` | Prisma CLI 为开发依赖；`npm test` 执行真实测试。 |
+| `backend/src/app.ts` | 生产可信代理强制配置，以及 Cookie 写操作 Origin 校验。 |
+| `backend/src/middleware/rateLimiter.ts` | Express IP/IPv6 规范化和 IP/用户名双登录限速。 |
+| `backend/src/middleware/auth.ts` | Cookie 会话认证、jti 强制和 fail-closed 认证依赖。 |
+| `backend/src/utils/sessionCookie.ts` | 管理员 Cookie 属性、读取与存在性检测。 |
+| `backend/src/utils/tokenRevocation.ts` | 参数化 token 吊销读写，故障向上抛出。 |
+| `backend/src/utils/productValidation.ts` | 产品 ID、文本、数值、金额精度的共享校验。 |
+| `backend/src/controllers/adminController.ts` | Cookie 签发/清除、会话接口、产品输入校验和 nullable 更新。 |
+| `backend/src/controllers/productController.ts` | 公开产品详情的严格十进制 ID 解析。 |
+| `backend/src/routes/adminRoutes.ts` | 会话验证端点和双限速登录路由。 |
+| `backend/src/utils/seedData.ts` | 默认不创建样例产品，需显式 opt-in。 |
+| `backend/src/scripts/seedRuntime.ts` | 容器启动时仅执行安全运行时初始化。 |
+| `backend/prisma/seed.ts` | 本地演示数据由 `SEED_SAMPLE_PRODUCTS` 控制。 |
+| `backend/test/*.test.cjs` | 限速、seed、Cookie、fail-closed、产品校验的 11 项 Node 测试。 |
+| `frontend-next/next.config.ts` | CSP、HSTS、反嵌入、MIME、Referrer、权限策略安全头。 |
+| `frontend-next/src/components/SiteDocument.tsx` | locale 根文档：字体、全站 metadata、JSON-LD、AntD registry 和 GA。 |
+| `frontend-next/src/app/[locale]/layout.tsx` | locale 根布局，服务端输出正确 html lang 并保持 SSG。 |
+| `frontend-next/src/app/(redirect)/layout.tsx` | 根路径语言重定向的独立根文档。 |
+| `frontend-next/src/app/(redirect)/page.tsx` | 根据 Accept-Language 将 `/` 重定向到 `/zh` 或 `/en`。 |
+| `frontend-next/src/app/admin/layout.tsx` | 管理区独立根文档、全局样式、AntD registry 与 noindex。 |
+| `frontend-next/src/app/[locale]/providers/[name]/page.tsx` | provider 的 canonical/hreflang/OG URL 编码。 |
+| `frontend-next/src/app/sitemap.ts` | 服务商 sitemap URL 编码。 |
+| `frontend-next/src/lib/api.ts` | 管理 API Cookie 凭据与 nullable 更新 payload。 |
+| `frontend-next/src/components/admin/AuthGuard.tsx` | 通过服务端 session 校验 Cookie 会话。 |
+| `frontend-next/src/components/admin/AdminShell.tsx` | 登出改为服务端吊销 Cookie 会话。 |
+| `frontend-next/src/app/admin/login/page.tsx` | 登录不再将 token 写入 localStorage。 |
+| `frontend-next/src/app/admin/(dashboard)/products/page.tsx` | 清空可选字段发送 null，CPU 输入限制整数。 |
+| `frontend-next/src/components/home/HomeClient.tsx` | 修正 Hook 依赖，消除 lint 警告。 |
+| `frontend-next/src/app/[locale]/products/[id]/page.tsx` | 删除未使用变量，维持干净 lint。 |
+| `frontend-next/src/app/layout.tsx`（删除） | 原固定中文根布局拆分为 locale/admin/redirect 多根布局。 |
+| `frontend-next/src/app/page.tsx`（迁移） | 原根重定向页面迁移到 `(redirect)/page.tsx`。 |
+| `frontend/package.json` | 移除不安全 prerender/Puppeteer 工具链并更新依赖锁。 |
+| `frontend/vite.config.ts` | 移除包含高危依赖的预渲染插件。 |
+| `frontend/src/pages/Home/index.tsx` | 修正 Hook 依赖，消除旧前端 lint 警告。 |

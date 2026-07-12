@@ -9,6 +9,7 @@ const db_1 = require("../utils/db");
 const response_1 = require("../utils/response");
 const types_1 = require("../types");
 const logError_1 = require("../utils/logError");
+const productValidation_1 = require("../utils/productValidation");
 const ALLOWED_SORT_FIELDS = ['cpu', 'memory', 'disk', 'monthlyTraffic', 'bandwidth', 'price'];
 function normalizeQueryText(value) {
     if (typeof value !== 'string') {
@@ -114,8 +115,8 @@ async function getProductById(req, res, _next) {
         const rawId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
         // 使用 parseInt(id, 10) 而非 Number()，避免 Number("0x10")=16 等
         // 非十进制字面量被接受（URL 路径参数语义上应为十进制）。
-        const id = parseInt(rawId, 10);
-        if (!Number.isInteger(id) || id <= 0) {
+        const id = (0, productValidation_1.parseStrictPositiveId)(rawId);
+        if (id === null) {
             (0, response_1.errorResponse)(res, types_1.ERROR_CODES.BAD_REQUEST, 'Invalid product id', 400);
             return;
         }

@@ -26,10 +26,8 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   const pathname = usePathname();
 
   const handleLogout = async () => {
-    // 先调用后端吊销 token（服务端失效），再清除本地 token 并跳转。
-    // adminLogout 内部吞掉错误，确保客户端登出不会被网络问题阻断。
+    // 服务端吊销并清除 HttpOnly Cookie；网络失败也不阻断本地跳转。
     await adminLogout();
-    localStorage.removeItem("token");
     router.replace("/admin/login");
   };
 
@@ -37,19 +35,19 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
     {
       key: "/admin/products",
       icon: <AppstoreOutlined />,
-      label: "产品管理",
+      label: "Products",
       onClick: () => router.push("/admin/products"),
     },
     {
       key: "/admin/announcement",
       icon: <NotificationOutlined />,
-      label: "公告管理",
+      label: "Announcement",
       onClick: () => router.push("/admin/announcement"),
     },
     {
       key: "/admin/settings",
       icon: <SettingOutlined />,
-      label: "配置管理",
+      label: "Settings",
       onClick: () => router.push("/admin/settings"),
     },
   ];

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { isTokenExpired } from "@/lib/api";
+import { adminGetSession } from "@/lib/api";
 
 /**
  * Admin 路由守卫（客户端组件）。
@@ -20,37 +20,35 @@ const EXPIRY_CHECK_INTERVAL_MS = 30000;
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [authorized, setAuthorized] = useState(false);
+  const [authorized, setAuthorized] = useState<boolean | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     const redirectToLogin = () => {
-      const token = localStorage.getItem("token");
-      if (token) localStorage.removeItem("token");
       router.replace(`/admin/login?from=${encodeURIComponent(pathname)}&reason=expired`);
     };
 
-    const checkToken = () => {
-      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-      if (!token || isTokenExpired(token)) {
+    const checkSession = async () => {
+      try {
+        await adminGetSession();
+        setAuthorized(true);
+        return true;
+      } catch {
+        setAuthorized(false);
+        if (timerRef.current) {
+          clearInterval(timerRef.current);
+          timerRef.current = null;
+        }
         redirectToLogin();
         return false;
       }
-      return true;
     };
 
-    // 初始检查
-    if (checkToken()) {
-      setAuthorized(true);
-
-      // 设置定时器：定期检查 token 是否过期
-      timerRef.current = setInterval(() => {
-        const token = localStorage.getItem("token");
-        if (!token || isTokenExpired(token)) {
-          redirectToLogin();
-        }
-      }, EXPIRY_CHECK_INTERVAL_MS);
-    }
+    void checkSession().then((valid) => {
+      if (valid) {
+        timerRef.current = setInterval(() => void checkSession(), EXPIRY_CHECK_INTERVAL_MS);
+      }
+    });
 
     return () => {
       if (timerRef.current) {
@@ -60,7 +58,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     };
   }, [router, pathname]);
 
-  if (!authorized) {
+  if (authorized !== true) {
     return null;
   }
 

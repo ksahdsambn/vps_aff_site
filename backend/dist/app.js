@@ -12,6 +12,7 @@ const errorHandler_1 = require("./middleware/errorHandler");
 const adminRoutes_1 = __importDefault(require("./routes/adminRoutes"));
 const productRoutes_1 = __importDefault(require("./routes/productRoutes"));
 const configRoutes_1 = __importDefault(require("./routes/configRoutes"));
+const sessionCookie_1 = require("./utils/sessionCookie");
 const isProduction = process.env.NODE_ENV === 'production';
 const app = (0, express_1.default)();
 const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost')
@@ -28,8 +29,8 @@ const effectiveOrigins = hasWildcard
     ? ['http://localhost', 'http://localhost:3000']
     : allowedOrigins;
 // trust proxy：根据部署拓扑设置可信代理层数。
-// - TRUST_PROXY_HOPS 环境变量显式指定跳数（如 Cloudflare→nginx→容器 = 3）。
-// - 未设置时默认 1（兼容单层反代）。
+// - 生产环境必须显式指定 TRUST_PROXY_HOPS，避免盲目信任客户端 XFF。
+// - 开发环境默认 0（直连），需要反代时再显式设置。
 //
 // 部署拓扑参考（需据此调整 TRUST_PROXY_HOPS）：
 //   直连 Express（无反代）= 0
@@ -38,8 +39,15 @@ const effectiveOrigins = hasWildcard
 //   Cloudflare → nginx → 容器 = 3
 //
 // 配置错误会导致 req.ip 为内网地址而非真实客户端 IP，使基于 IP 的限速失效。
-const proxyHops = parseInt(process.env.TRUST_PROXY_HOPS || '1', 10);
-const effectiveProxyHops = Number.isFinite(proxyHops) && proxyHops >= 0 ? proxyHops : 1;
+const configuredProxyHops = process.env.TRUST_PROXY_HOPS;
+if (isProduction && configuredProxyHops === undefined) {
+    throw new Error('生产环境必须显式设置 TRUST_PROXY_HOPS。');
+}
+const proxyHops = parseInt(configuredProxyHops || '0', 10);
+if (!Number.isFinite(proxyHops) || proxyHops < 0) {
+    throw new Error('TRUST_PROXY_HOPS 必须是大于或等于 0 的整数。');
+}
+const effectiveProxyHops = proxyHops;
 app.set('trust proxy', effectiveProxyHops);
 if (isProduction) {
     console.log(`[security] trust proxy = ${effectiveProxyHops} (TRUST_PROXY_HOPS). ` +
@@ -72,10 +80,10 @@ app.use((0, cors_1.default)({
  */
 app.use('/api/admin', (req, res, next) => {
     const origin = req.headers.origin;
-    // 仅对 credentialed 请求（带 Authorization）且跨域写操作收紧。
-    if (req.headers.authorization && ['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) {
-        // Origin 存在但不在白名单 → 拒绝（cors 中间件不返回 ACAO，浏览器会拦截，但服务端也显式拒绝）。
-        if (origin && !effectiveOrigins.includes(origin)) {
+    const isUnsafeMethod = ['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method);
+    // Cookie 会自动随请求携带，因此其写操作必须带来自白名单的 Origin，防止 CSRF。
+    if (isUnsafeMethod && (0, sessionCookie_1.hasAdminSessionCookie)(req)) {
+        if (!origin || !effectiveOrigins.includes(origin)) {
             res.status(403).json({ code: 403, message: 'Origin not allowed' });
             return;
         }

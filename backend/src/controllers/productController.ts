@@ -3,6 +3,7 @@ import { prisma } from '../utils/db';
 import { successResponse, errorResponse } from '../utils/response';
 import { ERROR_CODES, ProductListQuery } from '../types';
 import { logError } from '../utils/logError';
+import { parseStrictPositiveId } from '../utils/productValidation';
 
 const ALLOWED_SORT_FIELDS = ['cpu', 'memory', 'disk', 'monthlyTraffic', 'bandwidth', 'price'];
 
@@ -121,8 +122,8 @@ export async function getProductById(req: Request, res: Response, _next: NextFun
     const rawId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
     // 使用 parseInt(id, 10) 而非 Number()，避免 Number("0x10")=16 等
     // 非十进制字面量被接受（URL 路径参数语义上应为十进制）。
-    const id = parseInt(rawId, 10);
-    if (!Number.isInteger(id) || id <= 0) {
+    const id = parseStrictPositiveId(rawId);
+    if (id === null) {
       errorResponse(res, ERROR_CODES.BAD_REQUEST, 'Invalid product id', 400);
       return;
     }

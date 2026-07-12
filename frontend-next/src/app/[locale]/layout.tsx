@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import { locales, localeToHtmlLang, resolveLocale } from "@/lib/i18n";
 import { SITE_URL } from "@/lib/seo";
 import I18nProvider from "@/components/I18nProvider";
+import SiteDocument, { siteMetadata } from "@/components/SiteDocument";
+import "../globals.css";
 
 /**
  * [locale] 段布局。
@@ -34,7 +36,11 @@ export default async function LocaleLayout({
   }
   const locale = resolveLocale(rawLocale);
 
-  return <I18nProvider locale={locale}>{children}</I18nProvider>;
+  return (
+    <SiteDocument locale={locale}>
+      <I18nProvider locale={locale}>{children}</I18nProvider>
+    </SiteDocument>
+  );
 }
 
 /** 每个 locale 的 hreflang alternates 元数据。 */
@@ -47,6 +53,7 @@ export async function generateMetadata({
   const locale = resolveLocale(rawLocale);
 
   return {
+    ...siteMetadata,
     alternates: {
       languages: {
         "zh-CN": `${SITE_URL}/zh`,

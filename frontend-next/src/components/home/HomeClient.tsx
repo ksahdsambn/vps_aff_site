@@ -69,6 +69,8 @@ const HomeClient: React.FC<HomeClientProps> = ({
   });
   const [filters, setFilters] = useState<FilterValues>({});
   const [sorter, setSorter] = useState<SorterState>({});
+  const currentPage = pagination.current;
+  const currentPageSize = pagination.pageSize;
 
   const isSmallScreen = windowWidth < 1200;
 
@@ -77,8 +79,8 @@ const HomeClient: React.FC<HomeClientProps> = ({
       setLoading(true);
       try {
         const params: GetProductsParams = {
-          page: pagination.current,
-          pageSize: pagination.pageSize,
+          page: currentPage,
+          pageSize: currentPageSize,
           ...filters,
         };
         if (sorter.field && sorter.order) {
@@ -97,7 +99,7 @@ const HomeClient: React.FC<HomeClientProps> = ({
         if (!cancelled.current) setLoading(false);
       }
     },
-    [pagination.current, pagination.pageSize, filters, sorter, t]
+    [currentPage, currentPageSize, filters, sorter, t]
   );
 
   // 仅在筛选/排序/分页变化时重新拉取（首帧用 SSG 数据，不触发）
