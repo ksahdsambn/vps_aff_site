@@ -28,5 +28,13 @@
 .reopenWrap { display: flex; justify-content: flex-end; max-width: 1400px; margin: 15px auto -4px; padding: 0 24px; }
 .reopen { display: inline-flex; align-items: center; gap: 7px; padding: 5px 0; color: var(--muted); border: 0; background: transparent; cursor: pointer; font: inherit; font-size: 0.78rem; }
 .reopen:hover, .reopen:focus-visible { color: var(--accent); outline: none; }
+.option { min-height: 44px; }
+
 @media (max-width: 900px) { .guide { grid-template-columns: 1fr; gap: 22px; } }
-@media (max-width: 768px) { .guide { margin: 16px; padding: 20px; } .footer { align-items: flex-start; flex-direction: column; gap: 7px; } .reopenWrap { margin: 10px auto -8px; padding: 0 16px; } }
+@media (max-width: 768px) {
+  .guide { margin: 16px; padding: 20px; }
+  .footer { align-items: flex-start; flex-direction: column; gap: 7px; }
+  .reopenWrap { margin: 10px auto -8px; padding: 0 16px; }
+  /* 「跳过」链接保证 44px 触达高度，居中对齐可点（原本是矮小的 type=link 按钮）。 */
+  .skip { min-height: 44px !important; display: inline-flex !important; align-items: center; }
+}

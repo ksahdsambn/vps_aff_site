@@ -98,7 +98,7 @@ export default async function PrivacyPage({ params }: PrivacyPageProps) {
       <Header config={config} locale={locale} asH1={false} />
       <Announcement config={config} />
 
-      <section style={{ maxWidth: 720, margin: "0 auto", padding: "32px 24px 48px" }}>
+      <section style={{ maxWidth: 720, margin: "0 auto", padding: "32px clamp(16px, 4vw, 24px) 48px", overflowWrap: "anywhere" }}>
         <div className="eyebrow" style={{ marginBottom: 8 }}>
           {isZh ? "法律声明" : "Legal"}
         </div>

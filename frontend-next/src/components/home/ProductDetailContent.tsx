@@ -102,6 +102,11 @@ export default function ProductDetailContent({
         <hr className={styles.rule} />
 
         <div className={styles.actions}>
+          {product.reviewUrl && (
+            <Button variant="ghost" size="large" href={product.reviewUrl} target="_blank" rel="noopener noreferrer">
+              {reviewLabel}
+            </Button>
+          )}
           <Button
             variant="primary"
             size="large"
@@ -109,14 +114,10 @@ export default function ProductDetailContent({
             target="_blank"
             rel="noopener noreferrer"
             icon={<ShoppingCartOutlined />}
+            className={styles.orderCta}
           >
             {orderLabel}
           </Button>
-          {product.reviewUrl && (
-            <Button variant="ghost" size="large" href={product.reviewUrl} target="_blank" rel="noopener noreferrer">
-              {reviewLabel}
-            </Button>
-          )}
         </div>
       </div>
     </section>

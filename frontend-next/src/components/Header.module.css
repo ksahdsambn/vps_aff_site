@@ -53,6 +53,24 @@
   gap: 14px !important;
 }
 
+/* 社交图标链接：用 min-width/min-height 把每个 <a> 撑到 44×44 最小触达目标
+   （AGENTS.md tap-target）；Space 默认会让 <a> 收缩到图标尺寸。
+   hover 填充整个 44px 方块 + accent-soft 底色，相邻图标间的 gap 保证不粘连。 */
+.iconLink {
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--r-control);
+  transition: background-color var(--dur) var(--ease-out),
+    color var(--dur) var(--ease-out);
+}
+
+.iconLink:hover {
+  background: var(--accent-soft);
+}
+
 .icon {
   font-size: 18px;
   color: var(--muted);
@@ -77,11 +95,18 @@
     font-size: 16px;
   }
 
+  /* 窄屏收窄操作区，但仍保证每个图标 44px 触达。图标之间留 4px 视觉间隙，
+     避免 44px 的 hover 高亮块连成一片；语言切换与图标组之间 6px。 */
   .actions {
-    gap: 10px;
+    gap: 6px;
   }
 
   .socialIcons {
-    gap: 10px !important;
+    gap: 4px !important;
+  }
+
+  /* 语言切换按钮在窄屏强制 40px 高（AntD text 按钮默认偏矮）。 */
+  .actions > :global(.ant-btn) {
+    min-height: 40px;
   }
 }

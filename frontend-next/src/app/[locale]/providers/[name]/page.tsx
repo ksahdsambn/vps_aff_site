@@ -8,6 +8,7 @@ import Header from "@/components/Header";
 import Announcement from "@/components/Announcement";
 import Footer from "@/components/Footer";
 import ProviderProductsTable from "@/components/home/ProviderProductsTable";
+import ProductCardList from "@/components/home/ProductCard";
 import type { Product } from "@/lib/api";
 
 /**
@@ -78,7 +79,7 @@ export default async function ProviderPage({ params }: ProviderPageProps) {
       <Header config={config} locale={locale} asH1={false} />
       <Announcement config={config} />
 
-      <section style={{ maxWidth: 1400, margin: "0 auto", padding: "0 24px 48px" }}>
+      <section style={{ maxWidth: 1400, margin: "0 auto", padding: "0 clamp(16px, 4vw, 24px) 48px" }}>
         <nav style={{ marginBottom: 20 }}>
           <Link href={`/${locale}`} style={{ color: "var(--muted)", textDecoration: "none", fontSize: "0.875rem" }}>
             <span role="img" aria-label="back">←</span> {back}
@@ -101,8 +102,15 @@ export default async function ProviderPage({ params }: ProviderPageProps) {
           <p style={{ color: "var(--muted)", marginTop: 8, fontSize: "0.875rem" }}>{productsCount}</p>
         </div>
 
-        <div className="surface page-enter" style={{ padding: 0, overflow: "hidden" }}>
+        {/* 桌面表格（≥1200px）。与首页一致：两套视图同时进 SSG HTML，CSS 显隐，
+            消除移动端首帧横向滚动。 */}
+        <div className="surface page-enter desktopOnly" style={{ padding: 0, overflow: "hidden" }}>
           <ProviderProductsTable products={products} locale={locale} />
+        </div>
+
+        {/* 移动卡片（<1200px）。复用首页卡片列表，不传 pagination/sort → 隐藏分页与排序。 */}
+        <div className="mobileOnly">
+          <ProductCardList data={products} loading={false} />
         </div>
       </section>
 

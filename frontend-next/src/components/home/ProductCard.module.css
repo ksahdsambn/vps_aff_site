@@ -148,3 +148,42 @@
   border: 1px solid var(--rule);
   border-radius: var(--r-container);
 }
+
+/*
+ * —— 移动端卡片优化 ——
+ * 平板/手机视口下单列堆叠（auto-fill minmax 在窄屏会退化为单列，这里显式收敛
+ * 避免边界抖动），并让下单 CTA 优先级最高（堆叠时置顶、全宽），符合
+ * AGENTS.md「内容优先级」与 44px 触达目标。
+ */
+@media (max-width: 600px) {
+  .cardList {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .card {
+    padding: 16px;
+  }
+
+  /* 下单 CTA 是联盟转化的主操作：窄屏纵向堆叠，下单置顶并全宽。 */
+  .actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  /* 下单按钮（primary，第二个）排在测评链接之上。 */
+  .actions > :global(.ant-btn):nth-of-type(1) {
+    order: 2;
+  }
+  .actions > :global(.ant-btn):nth-of-type(2) {
+    order: 1;
+  }
+}
+
+/* 极窄手机（≤380px）：规格网格仍保持 2 列（标签+值很短，2-up 更紧凑可扫读），
+   仅收紧间距。 */
+@media (max-width: 380px) {
+  .details {
+    gap: 12px 10px;
+  }
+}

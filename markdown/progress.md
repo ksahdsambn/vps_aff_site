@@ -1484,3 +1484,103 @@ products/announcement/settings：清扫内联中性 hex（`#f0f0f0`/`#fffbe6`/`#
 
 - 工作区改动合并至 `master`，推送到 `origin`（GitHub）。
 
+---
+
+## 2026-07-12 — 移动端 / 平板适配（adapt 技能）
+
+**执行 AI 模型：ZCode (builtin:bigmodel-coding-plan/GLM-5.2)**
+
+使用 `adapt` 技能系统重做全部公共页面 + admin 后台的移动端/平板体验。核心目标：
+重新思考布局、导航、触控与内容优先级（而非简单缩放），并严格遵守 `markdown/AGENTS.md`
+设计系统（token 化、无渐变/玻璃态/bounce、44px 触达、不透明表面 + hairline）。
+
+### 根因级 Bug 修复：移动端首帧渲染错误（SSG hydration flash）
+
+**问题**：首页在移动端首帧渲染出 **10 列桌面表格**，而非卡片列表。原因是
+`HomeClient.tsx` 用 `useSyncExternalStore` 读取 `window.innerWidth`，其服务端快照硬编码为
+`1200`。SSG 下静态 HTML 含表格，React 客户端 hydration 后才切到卡片 → 移动端出现横向滚动闪烁 +
+hydration mismatch。`FilterBar` 存在同类问题（首帧渲染内联筛选条而非 Drawer 触发按钮）。
+
+**修复策略（与用户确认）**：保留"桌面表格 + 移动卡片"双视图设计，但显隐改由 **纯 CSS 媒体查询**
+驱动，使正确视图直接进入 SSG HTML，无 JS 闪烁、无 hydration mismatch。
+
+- `globals.css`：新增 `.desktopOnly` / `.mobileOnly` 响应式可见性辅助类。基础规则低特异性
+  （0,1,0）以免覆盖组件 CSS module（如 FilterBar 的 `.bar` flex）；断点内用 `.desktopOnly.desktopOnly`
+  （0,2,0）确保隐藏规则可靠胜出任意单类 module 规则，不受样式表加载顺序影响。断点沿用 1199.98px
+  （内容驱动，对应桌面表格 ~10 列不再适配处）。
+- `HomeClient.tsx`：删除 `useSyncExternalStore` / `isSmallScreen` 逻辑，桌面表格与移动卡片**同时**
+  渲染进同一份 SSG HTML，各自包 `.desktopOnly` / `.mobileOnly`，共用同一份 products/pagination/sort
+  状态。
+- `FilterBar.tsx`：删除 `isMobile` JS state 与 resize 监听；桌面内联筛选条（`.desktopOnly`）与移动
+  筛选按钮 + 底部 Drawer（`.mobileOnly`）同时渲染。Drawer 开关为纯交互态（不影响首帧）。
+  顺带清理 AntD 6 `Drawer` 的 `height` 弃用警告（改用内容自适应）。
+- SEO：桌面表格内容仍留在 SSG HTML（对爬虫友好），CSS 显隐不影响可抓取数据。
+
+### 其余适配
+
+| 区域 | 改动 |
+|------|------|
+| 产品卡片（`ProductCard`） | 移动端单列堆叠；窄屏 CTA 纵向堆叠、下单置顶全宽（联盟转化优先）；泛化 `ProductCardList`（pagination/sort 可选）使服务商聚合页可复用 |
+| 产品详情（`ProductDetailContent`） | 移动端「下单」CTA 固定在视口底部（`position:fixed`），阅读规格/备注时主操作始终在拇指可达区；`.section` 预留等高 padding 避免遮挡；价格块与标题块用 hairline 分隔 |
+| 详情页 `<main>` | `overflow:hidden` → `overflow-x:clip`（保留防横向溢出，且不破坏 fixed 定位相对视口） |
+| 服务商聚合页 | 移动端新增卡片回退（复用 `ProductCardList`），桌面保留表格；页面 padding 改响应式 `clamp()` |
+| Header | 社交图标每个 44×44 最小触达目标（`min-width/min-height` + `inline-flex`）；窄屏 gap 收窄但保证 4 图标 + 语言切换器在 390px 无溢出；语言切换按钮窄屏强制 40px 高 |
+| GettingStarted | 「跳过」链接 44px 触达高度；选项行 `min-height:44px` |
+| Admin 导航（`AdminShell`） | 关键修复：原 `<Sider breakpoint="lg" collapsedWidth="0">` 在 ≤lg 时完全隐藏导航且无替代 → admin 在平板/手机不可导航。改用 `Grid.useBreakpoint()` 检测 lg：≥lg 常驻 Sider，<lg 由 Header 汉堡按钮唤出左侧 Drawer（深色 `--ink`，承载相同菜单）。AuthGuard 渲染前返回 null，故 SSG 预渲染 HTML 不含 shell → 无 hydration mismatch |
+| Admin 产品表单（`products/page.tsx`） | 产品表格加 `scroll={{ x: "max-content" }}`（窄屏横向滚动而非溢出视口）；搜索框 `width: min(320px,100%)` + `flex:1`；新增/编辑 Modal `width="min(800px,92vw)"`；表单 `<Space>` 行加 `wrap` 使字段在窄屏堆叠 |
+| Footer / Privacy | 移动端导航链接 44px 触达高度；privacy section padding 响应式 + `overflow-wrap:anywhere`（长 URL 不撑破布局） |
+
+### 细节修正（代码审查收尾）
+
+1. **DOM 顺序一致性**：卡片与详情页的 actions 源顺序原本相反（卡片先测评后下单，详情页先下单后测评）。
+   统一为「测评在前、下单在后」，Order 置顶纯由 CSS `order` 实现，消除维护歧义。
+2. **硬编码阴影 → token**：`globals.css` 新增语义化 `--shadow-ink-faint` token（`rgba(26,29,41,0.03)`），
+   暗色就绪（未来 `[data-theme="dark"]` 仅改一组变量）。详情页固定 CTA 栏的 `box-shadow` 改用该 token，
+   不再内联硬编码 rgba。
+3. **Header 图标间距**：移动端 `.socialIcons` gap 由 2px 调整为 4px，`.actions` gap 6px——44px 触达目标
+   不变，但相邻 hover 高亮块视觉更清晰、不粘连。验证 4 图标 + 语言切换器在 390px 无溢出。
+
+### 验证结果（真实数据：后端 + MySQL + 51 条产品）
+
+- `npm run lint`、`tsc --noEmit`、`npm run build`：✅ 全通过；构建产物含真实产品/服务商 SSG 页面。
+- **SSG 修复（Playwright run-code，390/834/1280/320px）**：
+  - 移动端 `desktopOnly=none`、`mobileOnly=block`、桌面端相反；**零横向溢出**、**零 hydration 警告**。
+  - Filter Drawer 在移动端正确打开（含全部字段）。
+- **卡片 CTA 顺序**：`domOrder:[查看测评,下单]`，`orderOnTop:true`（下单视觉置顶）。
+- **详情页固定 CTA 栏**：`position:fixed`、`gap:0`（紧贴视口底）、`orderOnTop:true`、`boxShadow` 解析为
+  `rgba(26,29,41,0.03)`（token 生效）。
+- **服务商页**：移动端渲染卡片（`cardsCount>0`、表格隐藏）；桌面端渲染表格、卡片隐藏。
+- **Admin 导航**：登录后移动端显示汉堡按钮、隐藏 Sider；汉堡 Drawer 打开含 3 项菜单（Products/
+  Announcement/Settings），点击 Settings 成功导航到 `/admin/settings`。
+- **Admin 预渲染安全**：`/admin/products.html` 预渲染 HTML 仅含 AuthGuard 的 null 状态
+  （`<div hidden=""></div>`），无 shell 标记 → `useBreakpoint` SSR 全 false 不产生可见 DOM → 无 mismatch。
+- **SSG 数据安全**：桌面表格产品数据仍进入 SSG HTML（爬虫可抓取），CSS 显隐不影响 SEO。
+- **CSP**：`next.config.ts` 的 CSP 在所有页面保持有效。
+- 设计系统合规：无硬编码 hex（仅沿用既有 `rgba(26,29,41,…)` 阴影先例并已 token 化）；无渐变/玻璃态/
+  bounce/translateY-hover；全部走 CSS 变量；44px 触达；`prefers-reduced-motion` 门控保留。
+
+### 修改文件清单（16 改）
+
+| 文件 | 改动 |
+|------|------|
+| `frontend-next/src/app/globals.css` | `.desktopOnly`/`.mobileOnly` 辅助类 + `--shadow-ink-faint` token |
+| `frontend-next/src/components/home/HomeClient.tsx` | 删除 viewport JS 逻辑，双视图 CSS 显隐 |
+| `frontend-next/src/components/FilterBar.tsx` | 删除 isMobile state，双外壳 + Drawer |
+| `frontend-next/src/components/home/ProductCard.tsx` | props 可选化（pagination/sort），复用于服务商页 |
+| `frontend-next/src/components/home/ProductCard.module.css` | 移动端单列、CTA 堆叠置顶 |
+| `frontend-next/src/components/home/ProductDetailContent.tsx` | actions DOM 顺序统一（测评在前） |
+| `frontend-next/src/components/home/ProductDetailContent.module.css` | 移动端 fixed CTA 栏 + token 阴影 + priceBlock hairline |
+| `frontend-next/src/app/[locale]/products/[id]/page.tsx` | `<main>` overflow:hidden→overflow-x:clip |
+| `frontend-next/src/app/[locale]/providers/[name]/page.tsx` | 移动卡片回退 + 响应式 padding |
+| `frontend-next/src/components/Header.tsx` | 社交图标加 iconLink 类 |
+| `frontend-next/src/components/Header.module.css` | 44px 触达 + gap 调整 + 语言切换高度 |
+| `frontend-next/src/components/Footer.module.css` | 移动端导航链接 44px 触达 |
+| `frontend-next/src/components/home/GettingStarted.module.css` | 跳过链接 44px + 选项 min-height |
+| `frontend-next/src/components/admin/AdminShell.tsx` | 汉堡 Drawer 移动导航 + 响应式 header/content |
+| `frontend-next/src/app/admin/(dashboard)/products/page.tsx` | 表格横向滚动 + Modal/表单窄屏适配 |
+| `frontend-next/src/app/[locale]/privacy/page.tsx` | 响应式 padding + overflow-wrap |
+
+### 部署操作
+
+- 工作区改动合并至 `master`，推送到 `origin`（GitHub）。
+

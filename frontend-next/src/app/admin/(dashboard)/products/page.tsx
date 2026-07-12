@@ -298,7 +298,7 @@ export default function AdminProductsPage() {
           value={searchInput}
           onSearch={handleSearch}
           onChange={(event) => handleSearchInputChange(event.target.value)}
-          style={{ width: 320 }}
+          style={{ width: "min(320px, 100%)", flex: 1, minWidth: 200 }}
           allowClear
         />
         <Button type="primary" icon={<PlusOutlined />} onClick={showAddModal}>
@@ -313,6 +313,7 @@ export default function AdminProductsPage() {
         loading={loading}
         pagination={{ current: page, pageSize, total, showSizeChanger: true }}
         onChange={handleTableChange}
+        scroll={{ x: "max-content" }}
       />
 
       <Modal
@@ -320,10 +321,10 @@ export default function AdminProductsPage() {
         open={isModalVisible}
         onOk={() => void handleModalOk()}
         onCancel={() => setIsModalVisible(false)}
-        width={800}
+        width="min(800px, 92vw)"
       >
         <Form form={form} layout="vertical">
-          <Space size="large" style={{ display: "flex" }}>
+          <Space size="large" style={{ display: "flex" }} wrap>
             <Form.Item name="provider" label="Provider" rules={[{ required: true }]}>
               <Input placeholder="e.g. Vultr" />
             </Form.Item>
@@ -335,7 +336,7 @@ export default function AdminProductsPage() {
             </Form.Item>
           </Space>
 
-          <Space size="large" style={{ display: "flex" }}>
+          <Space size="large" style={{ display: "flex" }} wrap>
             <Form.Item name="cpu" label="CPU cores" rules={[{ required: true }]}>
               <InputNumber min={1} precision={0} />
             </Form.Item>
@@ -347,7 +348,7 @@ export default function AdminProductsPage() {
             </Form.Item>
           </Space>
 
-          <Space size="large" style={{ display: "flex" }}>
+          <Space size="large" style={{ display: "flex" }} wrap>
             <Form.Item
               label="Monthly traffic"
               required

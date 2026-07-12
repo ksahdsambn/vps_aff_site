@@ -66,22 +66,22 @@ const Header: React.FC<HeaderProps> = ({ config, locale, asH1 = true }) => {
         <nav aria-label="Social links">
           <Space className={styles.socialIcons}>
             {config?.link_telegram && (
-              <a href={config.link_telegram} target="_blank" rel="noopener noreferrer" aria-label="Telegram">
+              <a href={config.link_telegram} target="_blank" rel="noopener noreferrer" aria-label="Telegram" className={styles.iconLink}>
                 <SendOutlined className={styles.icon} />
               </a>
             )}
             {config?.link_youtube && (
-              <a href={config.link_youtube} target="_blank" rel="noopener noreferrer" aria-label="YouTube">
+              <a href={config.link_youtube} target="_blank" rel="noopener noreferrer" aria-label="YouTube" className={styles.iconLink}>
                 <YoutubeOutlined className={styles.icon} />
               </a>
             )}
             {config?.link_blog && (
-              <a href={config.link_blog} target="_blank" rel="noopener noreferrer" aria-label="Blog">
+              <a href={config.link_blog} target="_blank" rel="noopener noreferrer" aria-label="Blog" className={styles.iconLink}>
                 <ReadOutlined className={styles.icon} />
               </a>
             )}
             {config?.link_x && (
-              <a href={config.link_x} target="_blank" rel="noopener noreferrer" aria-label="X">
+              <a href={config.link_x} target="_blank" rel="noopener noreferrer" aria-label="X" className={styles.iconLink}>
                 <TwitterOutlined className={styles.icon} />
               </a>
             )}

@@ -62,7 +62,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
   ]);
 
   return (
-    <main style={{ minHeight: "100vh", position: "relative", overflow: "hidden" }}>
+    <main style={{ minHeight: "100vh", position: "relative", overflowX: "clip" }}>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: safeJsonLd(productJsonLd) }}

@@ -74,6 +74,12 @@
     padding: 20px 16px;
   }
   .nav {
-    gap: 8px;
+    gap: 4px;
+  }
+  /* 链接保证 44px 触达高度，便于手指点击（AGENTS.md tap-target）。 */
+  .nav a {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
   }
 }

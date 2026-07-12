@@ -142,6 +142,10 @@
 }
 
 @media (max-width: 768px) {
+  /* 为底部固定的 CTA 栏预留空间，避免末尾内容/页脚被遮挡。 */
+  .section {
+    padding-bottom: 140px;
+  }
   .specGrid {
     grid-template-columns: 1fr 1fr;
     gap: 18px 16px;
@@ -149,11 +153,46 @@
   .head {
     flex-direction: column;
   }
+  /* 堆叠时用 hairline 分隔标题块与价格块，强化层级（无 glass / 无渐变）。 */
   .priceBlock {
     text-align: left;
+    padding-top: 14px;
+    border-top: 1px solid var(--rule);
+    width: 100%;
   }
-  .actions > :global(.ant-btn) {
-    flex: 1;
-    min-width: 0;
+
+  /*
+   * 下单 CTA 固定在视口底部：阅读规格/备注时主操作始终在拇指可达区，符合
+   * AGENTS.md「内容优先级」与「calm, no bounce」。用 fixed（而非 sticky）保证
+   * 短内容下也无底部空隙、且不受父级 overflow 影响；下方 .section 预留等高
+   * padding，避免末尾内容被遮。不透明 surface + hairline 顶边 + 极轻投影（无 glow）。
+   *
+   * DOM 顺序与 ProductCard 一致：测评链接在前、下单在后（见上方 JSX）；CSS 用
+   * order 把主操作（下单）置顶、全宽，测评链接在下方占满宽。
+   */
+  .actions {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px clamp(16px, 4vw, 36px) calc(14px + env(safe-area-inset-bottom, 0px));
+    background: var(--surface);
+    border-top: 1px solid var(--rule);
+    box-shadow: 0 -1px 2px 0 var(--shadow-ink-faint);
+  }
+  /* 测评（DOM 第一）在下、全宽；下单（DOM 第二）置顶、全宽。 */
+  .actions > :global(.ant-btn):nth-of-type(1) {
+    order: 2;
+    width: 100%;
+  }
+  .actions > :global(.ant-btn):nth-of-type(2) {
+    order: 1;
+    width: 100%;
+  }
+  .orderCta {
+    width: 100%;
   }
 }

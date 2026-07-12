@@ -18,13 +18,22 @@ import styles from "./ProductCard.module.css";
 interface ProductCardProps {
   data: Product[];
   loading: boolean;
-  pagination: {
+  /**
+   * 分页信息。可选——首页传入以渲染分页器；服务商聚合页不传则隐藏分页。
+   */
+  pagination?: {
     current: number;
     pageSize: number;
     total: number;
   };
-  onSortChange: (field: string, order: "ascend" | "descend" | undefined) => void;
-  onPageChange: (page: number, pageSize: number) => void;
+  /**
+   * 排序变更回调。可选——首页传入以渲染排序下拉；服务商聚合页不传则隐藏排序。
+   */
+  onSortChange?: (field: string, order: "ascend" | "descend" | undefined) => void;
+  /**
+   * 分页变更回调。可选；仅在传入 pagination 时有意义。
+   */
+  onPageChange?: (page: number, pageSize: number) => void;
 }
 
 /**
@@ -42,7 +51,10 @@ const ProductCardList: React.FC<ProductCardProps> = ({
 }) => {
   const { t } = useTranslation();
 
+  // 排序下拉仅在传入 onSortChange 时渲染（首页有；服务商聚合页无）。
+  const showSort = Boolean(onSortChange);
   const handleSortChange = (value: string) => {
+    if (!onSortChange) return;
     if (!value) {
       onSortChange("", undefined);
       return;
@@ -69,20 +81,22 @@ const ProductCardList: React.FC<ProductCardProps> = ({
 
   return (
     <div className={styles.container}>
-      <div className={styles.sortHeader}>
-        <span className={styles.sortLabel}>
-          <InteractionOutlined style={{ marginRight: 8 }} />
-          {t("sort.label")}
-        </span>
-        <Select
-          style={{ width: 150 }}
-          placeholder={t("sort.default")}
-          options={sortOptions}
-          onChange={handleSortChange}
-          allowClear
-          size="large"
-        />
-      </div>
+      {showSort && (
+        <div className={styles.sortHeader}>
+          <span className={styles.sortLabel}>
+            <InteractionOutlined style={{ marginRight: 8 }} />
+            {t("sort.label")}
+          </span>
+          <Select
+            style={{ width: 150 }}
+            placeholder={t("sort.default")}
+            options={sortOptions}
+            onChange={handleSortChange}
+            allowClear
+            size="large"
+          />
+        </div>
+      )}
 
       {data.length === 0 && !loading ? (
         <div className={styles.emptyWrap}>
@@ -162,7 +176,7 @@ const ProductCardList: React.FC<ProductCardProps> = ({
         </div>
       )}
 
-      {data.length > 0 && (
+      {data.length > 0 && pagination && onPageChange && (
         <div className={styles.pagination}>
           <Pagination
             current={pagination.current}

@@ -52,6 +52,16 @@
   --r-table-header: 10px;
   --r-container: 12px;
 
+  /*
+   * Shadows — semantic & dark-mode-ready.
+   * --shadow-ink-faint is the ink-tinted translucent shadow color used on hairline
+   * separators (e.g. fixed CTA bars). Light mode tints toward ink; a future
+   * [data-theme="dark"] block can retune this toward a light tint without touching
+   * component CSS. Kept as a color token (not the full box-shadow) so call sites
+   * control blur/offset while the hue stays centralized.
+   */
+  --shadow-ink-faint: rgba(26, 29, 41, 0.03);
+
   /* Breakpoints (reference) */
   --breakpoint-sm: 576px;
   --breakpoint-md: 768px;
@@ -222,6 +232,37 @@ h1, h2, h3, h4, h5, h6 {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+}
+
+/*
+ * —— Responsive visibility helpers ——
+ * CSS-driven (not JS) so SSG first-paint shows the right surface with zero
+ * hydration flash. The 1199.98px split matches the content-driven breakpoint
+ * where the ~10-column desktop table stops fitting (see HomeClient). Both the
+ * desktop table and the mobile card list are server-rendered into the static
+ * HTML; only the correct one is displayed per viewport. SEO table content
+ * stays crawlable in the markup regardless.
+ *
+ * Specificity note: the base rules are intentionally low-specificity
+ * (.desktopOnly / .mobileOnly, 0,1,0) so they do NOT override component CSS
+ * modules (e.g. FilterBar's `.bar` flex layout) on desktop — the component's
+ * own display value wins there. Inside the breakpoint we double the class
+ * (.desktopOnly.desktopOnly, 0,2,0) so the hide rule reliably beats any
+ * single-class module rule regardless of stylesheet load order.
+ */
+.desktopOnly {
+  display: revert;
+}
+.mobileOnly {
+  display: none;
+}
+@media (max-width: 1199.98px) {
+  .desktopOnly.desktopOnly {
+    display: none;
+  }
+  .mobileOnly.mobileOnly {
+    display: revert;
+  }
 }
 
 /* —— Reduced motion: disable transforms/animations entirely —— */

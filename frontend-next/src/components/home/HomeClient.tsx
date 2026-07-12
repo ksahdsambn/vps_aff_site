@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef, useSyncExternalStore } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { message } from "antd";
 import type { TableProps } from "antd";
@@ -27,11 +27,6 @@ interface SorterState {
   order?: "asc" | "desc";
 }
 
-const subscribeToViewport = (callback: () => void) => {
-  window.addEventListener("resize", callback);
-  return () => window.removeEventListener("resize", callback);
-};
-
 interface HomeClientProps {
   /** 服务端 SSG 预取的初始产品数据（首帧内容，爬虫可见）。 */
   initialProducts: Product[];
@@ -46,6 +41,12 @@ interface HomeClientProps {
  *
  * 首帧：直接渲染 initialProducts（来自服务端 SSG），无需加载、无骨架屏闪烁。
  * 交互：筛选/排序/分页时调用 getProducts() 重新拉取，期间显示骨架屏。
+ *
+ * 桌面表格 / 移动卡片两种视图**同时**渲染进同一份 SSG HTML，再用 CSS 媒体查询
+ * （globals.css 的 .desktopOnly / .mobileOnly）按视口显隐。这样首帧 HTML 就含
+ * 正确视图，避免「SSG 渲染表格 → 客户端 hydration 后才切卡片」的闪烁与横向滚动，
+ * 也不再依赖 window.innerWidth（消除 hydration mismatch）。两套视图共用同一份
+ * products/pagination/sort 状态，通过各自的事件回调更新（任一时刻只有一个可见）。
  */
 const HomeClient: React.FC<HomeClientProps> = ({
   initialProducts,
@@ -54,11 +55,6 @@ const HomeClient: React.FC<HomeClientProps> = ({
   locale,
 }) => {
   const { t } = useTranslation();
-  const windowWidth = useSyncExternalStore(
-    subscribeToViewport,
-    () => window.innerWidth,
-    () => 1200
-  );
   // 首帧用 SSG 预取数据，loading=false（消除骨架屏闪烁）
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [loading, setLoading] = useState(false);
@@ -71,8 +67,6 @@ const HomeClient: React.FC<HomeClientProps> = ({
   const [sorter, setSorter] = useState<SorterState>({});
   const currentPage = pagination.current;
   const currentPageSize = pagination.pageSize;
-
-  const isSmallScreen = windowWidth < 1200;
 
   const loadProducts = useCallback(
     async (cancelled: { current: boolean }) => {
@@ -171,7 +165,7 @@ const HomeClient: React.FC<HomeClientProps> = ({
     }, 0);
   };
 
-  // locale 仅用于骨架屏 viewMode 隔离（此处不影响渲染）
+  // locale 保留以便未来扩展；当前两套视图共用同一份状态，无需按 locale 区分。
   void locale;
 
   return (
@@ -185,29 +179,39 @@ const HomeClient: React.FC<HomeClientProps> = ({
           margin: "0 auto",
           position: "relative",
           zIndex: 1,
-          padding: isSmallScreen ? "0 12px" : "0 24px",
+          padding: "0 clamp(12px, 2vw, 24px)",
         }}
       >
         <FilterBar onFilterChange={handleFilterChange} initialProviders={initialProviders} />
 
-        {loading ? (
-        <ProductSkeleton viewMode={isSmallScreen ? "card" : "table"} />
-      ) : isSmallScreen ? (
-        <ProductCardList
-          data={products}
-          loading={loading}
-          pagination={pagination}
-          onSortChange={handleCardSortChange}
-          onPageChange={handleCardPageChange}
-        />
-      ) : (
-        <ProductTable
-          data={products}
-          loading={loading}
-          pagination={pagination}
-          onChange={handleTableChange}
-        />
-        )}
+        {/* 桌面表格（≥1200px）。两套视图同时存在于 SSG HTML，仅靠 CSS 显隐。 */}
+        <div className="desktopOnly">
+          {loading ? (
+            <ProductSkeleton viewMode="table" />
+          ) : (
+            <ProductTable
+              data={products}
+              loading={loading}
+              pagination={pagination}
+              onChange={handleTableChange}
+            />
+          )}
+        </div>
+
+        {/* 移动卡片（<1200px，含平板与手机）。 */}
+        <div className="mobileOnly">
+          {loading ? (
+            <ProductSkeleton viewMode="card" />
+          ) : (
+            <ProductCardList
+              data={products}
+              loading={loading}
+              pagination={pagination}
+              onSortChange={handleCardSortChange}
+              onPageChange={handleCardPageChange}
+            />
+          )}
+        </div>
       </section>
     </>
   );
