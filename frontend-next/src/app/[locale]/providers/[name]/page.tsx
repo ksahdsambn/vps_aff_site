@@ -93,7 +93,7 @@ export default async function ProviderPage({ params }: ProviderPageProps) {
           </Link>
         </nav>
 
-        <div style={{ marginBottom: 20 }}>
+        <div className="page-enter" style={{ marginBottom: 20 }}>
           <h1
             style={{
               fontFamily: "var(--font-display)",

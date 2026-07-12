@@ -28,6 +28,7 @@ export default async function LocaleNotFound({
 
   return (
     <main
+      className="page-enter"
       style={{
         minHeight: "60vh",
         display: "flex",

@@ -19,6 +19,18 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 16px;
+  transition: opacity var(--dur) var(--ease-out);
+}
+
+/*
+ * Stale-while-revalidate feedback: when a refetch is in flight and stale cards
+ * remain on screen, gently dim the list (no spinner — context is preserved).
+ * Cards keep their hover border/color transition independently. Reduced-motion
+ * zeroes the transition globally via the prefers-reduced-motion block.
+ */
+.stale {
+  opacity: 0.55;
+  pointer-events: none;
 }
 
 .card {
