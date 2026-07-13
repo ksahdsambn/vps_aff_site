@@ -171,6 +171,7 @@ const ProductCardList: React.FC<ProductCardProps> = ({
                   target="_blank"
                   rel="noopener noreferrer"
                   icon={<ShoppingCartOutlined />}
+                  className={styles.primaryCta}
                 >
                   {t("table.orderButton")}
                 </Button>

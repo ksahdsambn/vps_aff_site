@@ -35,6 +35,7 @@
   .guide { margin: 16px; padding: 20px; }
   .footer { align-items: flex-start; flex-direction: column; gap: 7px; }
   .reopenWrap { margin: 10px auto -8px; padding: 0 16px; }
-  /* 「跳过」链接保证 44px 触达高度，居中对齐可点（原本是矮小的 type=link 按钮）。 */
+  /* 「跳过」与「重新打开」链接保证 44px 触达高度（AGENTS.md tap-target）。 */
   .skip { min-height: 44px !important; display: inline-flex !important; align-items: center; }
+  .reopen { min-height: 44px; }
 }
