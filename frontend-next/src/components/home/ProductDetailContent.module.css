@@ -187,16 +187,15 @@
     border-top: 1px solid var(--rule);
     box-shadow: 0 -1px 2px 0 var(--shadow-ink-faint);
   }
-  /* 测评（DOM 第一）在下、全宽；下单（DOM 第二）置顶、全宽。 */
-  .actions > :global(.ant-btn):nth-of-type(1) {
+  /* 测评（DOM 第一）在下、全宽；下单（DOM 第二）置顶、全宽。
+     用 .orderCta class 定位（而非 nth-of-type），保证缺少测评链接
+     （只有一个按钮）时下单仍置顶——nth-of-type(1) 在单按钮场景会误命中下单。 */
+  .actions > :global(.ant-btn):not(.orderCta) {
     order: 2;
     width: 100%;
   }
-  .actions > :global(.ant-btn):nth-of-type(2) {
+  .actions > :global(.ant-btn).orderCta {
     order: 1;
-    width: 100%;
-  }
-  .orderCta {
     width: 100%;
   }
 }

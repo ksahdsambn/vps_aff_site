@@ -57,8 +57,10 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
   const isZh = locale === "zh";
   // JSON-LD：Product + Offer + BreadcrumbList（统一封装到 lib/seo.ts）
   const productJsonLd = generateProductJsonLd(product, locale);
+  // 面包屑与可见的 Breadcrumb 组件保持一致：Home → Provider → Product。
   const breadcrumbJsonLd = generateBreadcrumbJsonLd([
     { name: isZh ? "首页" : "Home", url: `${SITE_URL}/${locale}` },
+    { name: product.provider, url: `${SITE_URL}/${locale}/providers/${encodeURIComponent(product.provider)}` },
     { name: `${product.provider} ${product.name}`, url: `${SITE_URL}/${locale}/products/${product.id}` },
   ]);
 

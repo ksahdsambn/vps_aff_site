@@ -32,7 +32,7 @@ export default function ProductDetailContent({
 }) {
   const { t } = useTranslation();
   const isZh = locale === "zh";
-  const back = isZh ? "返回首页" : "Back to Home";
+  const homeLabel = isZh ? "首页" : "Home";
   const specsTitle = isZh ? "产品规格" : "Specifications";
   const priceLabel = isZh ? "价格/年" : "Price/Year";
   const reviewLabel = isZh ? "查看测评" : "View Review";
@@ -45,7 +45,9 @@ export default function ProductDetailContent({
       <Breadcrumb
         className={styles.crumb}
         items={[
-          { title: <Link href={`/${locale}`}>{back}</Link> },
+          { title: <Link href={`/${locale}`}>{homeLabel}</Link> },
+          { title: <Link href={`/${locale}/providers/${encodeURIComponent(product.provider)}`}>{product.provider}</Link> },
+          { title: product.name },
         ]}
       />
 

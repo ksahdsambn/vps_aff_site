@@ -88,8 +88,8 @@ export default async function ProviderPage({ params }: ProviderPageProps) {
 
       <section style={{ maxWidth: 1400, margin: "0 auto", padding: "0 clamp(16px, 4vw, 24px) 48px" }}>
         <nav style={{ marginBottom: 20 }}>
-          <Link href={`/${locale}`} style={{ color: "var(--muted)", textDecoration: "none", fontSize: "0.875rem" }}>
-            <span role="img" aria-label="back">←</span> {back}
+          <Link href={`/${locale}`} style={{ color: "var(--muted)", textDecoration: "none", fontSize: "0.875rem", display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <span aria-hidden="true">←</span> {back}
           </Link>
         </nav>
 
