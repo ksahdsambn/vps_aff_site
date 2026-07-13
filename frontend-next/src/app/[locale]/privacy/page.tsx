@@ -59,6 +59,7 @@ export default async function PrivacyPage({ params }: PrivacyPageProps) {
           },
         ],
         back: "返回首页",
+        lastUpdated: "最后更新：2026-07-13",
       }
     : {
         title: "Privacy Policy",
@@ -91,6 +92,7 @@ export default async function PrivacyPage({ params }: PrivacyPageProps) {
           },
         ],
         back: "Back to Home",
+        lastUpdated: "Last updated: 2026-07-13",
       };
 
   return (
@@ -114,8 +116,11 @@ export default async function PrivacyPage({ params }: PrivacyPageProps) {
         >
           {t.title}
         </h1>
-        <p style={{ color: "var(--muted)", marginBottom: 36, fontSize: "1rem", lineHeight: 1.7 }}>
+        <p style={{ color: "var(--text)", marginBottom: 12, fontSize: "1rem", lineHeight: 1.7 }}>
           {t.intro}
+        </p>
+        <p style={{ color: "var(--muted)", marginBottom: 36, fontSize: "0.8125rem" }}>
+          {t.lastUpdated}
         </p>
 
         {t.sections.map((section, idx) => (

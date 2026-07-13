@@ -46,7 +46,7 @@ export default function LocaleError({
         fontFamily: "var(--font-body), system-ui, sans-serif",
       }}
     >
-      <div className="page-enter" style={{ maxWidth: 480 }}>
+      <div className="page-enter" role="alert" style={{ maxWidth: 480 }}>
         <h1
           style={{
             fontFamily: "var(--font-display), Georgia, serif",
@@ -65,14 +65,16 @@ export default function LocaleError({
         </p>
         <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
           <button
+            type="button"
             onClick={() => reset()}
+            className="boundary-cta"
             style={{
               display: "inline-flex",
               alignItems: "center",
               justifyContent: "center",
               minHeight: 44,
               padding: "0 28px",
-              borderRadius: 8,
+              borderRadius: "var(--r-control)",
               border: "none",
               background: "var(--accent)",
               color: "var(--accent-contrast)",
@@ -85,13 +87,14 @@ export default function LocaleError({
           </button>
           <Link
             href={`/${locale}`}
+            className="boundary-link"
             style={{
               display: "inline-flex",
               alignItems: "center",
               justifyContent: "center",
               minHeight: 44,
               padding: "0 28px",
-              borderRadius: 8,
+              borderRadius: "var(--r-control)",
               border: "1px solid var(--rule)",
               background: "transparent",
               color: "var(--ink)",

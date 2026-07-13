@@ -45,7 +45,6 @@ export default function LanguageSwitcher({ locale }: { locale: Locale }) {
       type="text"
       icon={<TranslationOutlined />}
       onClick={handleClick}
-      aria-label={label}
     >
       {label}
     </Button>

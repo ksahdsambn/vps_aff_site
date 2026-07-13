@@ -1,11 +1,28 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Form, Input, Button, Card, message, Space, Divider } from "antd";
+import { Form, Input, Card, message, Space } from "antd";
 import { SaveOutlined } from "@ant-design/icons";
 import { adminGetConfig, adminUpdateConfig, getApiErrorMessage } from "@/lib/api";
+import Button from "@/components/ui/Button";
 
 type SettingsFormValues = Record<string, string>;
+
+/*
+ * 分区标题样式（token 化、去重）：替代之前两处复制粘贴的内联 h3 borderBottom。
+ * 不用 AntD Divider——AntD 6 Divider 的 orientation 仅接受 horizontal/vertical
+ * （用于方向），不再支持带文字的左对齐分隔。保留 <h3> 语义更贴合表单分区标题。
+ */
+const sectionHeadingStyle: React.CSSProperties = {
+  marginTop: 24,
+  marginBottom: 16,
+  paddingBottom: 8,
+  borderBottom: "1px solid var(--rule)",
+  color: "var(--ink)",
+  fontFamily: "var(--font-display)",
+  fontWeight: 600,
+  fontSize: "1rem",
+};
 
 /**
  * Admin 配置管理（客户端组件）。
@@ -106,16 +123,7 @@ export default function AdminSettingsPage() {
         }}
         style={{ maxWidth: 800 }}
       >
-        <h3
-          style={{
-            marginTop: 24,
-            marginBottom: 16,
-            borderBottom: "1px solid var(--rule)",
-            paddingBottom: 8,
-          }}
-        >
-          Basic settings
-        </h3>
+        <h3 style={sectionHeadingStyle}>Basic settings</h3>
         <Space size="large" style={{ display: "flex", flexWrap: "wrap" }}>
           <Form.Item name="site_title_zh" label="Site title (ZH)" rules={[{ required: true, whitespace: true, max: 100 }]}>
             <Input placeholder="e.g. VPS Navigator" maxLength={100} />
@@ -129,16 +137,7 @@ export default function AdminSettingsPage() {
           <Input placeholder="https://example.com/logo.png" maxLength={2048} />
         </Form.Item>
 
-        <h3
-          style={{
-            marginTop: 24,
-            marginBottom: 16,
-            borderBottom: "1px solid var(--rule)",
-            paddingBottom: 8,
-          }}
-        >
-          Social links
-        </h3>
+        <h3 style={sectionHeadingStyle}>Social links</h3>
         <Space size="large" style={{ display: "flex", flexWrap: "wrap" }}>
           <Form.Item name="link_telegram" label="Telegram URL" rules={[{ type: "url", max: 2048 }]}>
             <Input placeholder="https://t.me/..." style={{ width: 300 }} maxLength={2048} />
@@ -154,10 +153,10 @@ export default function AdminSettingsPage() {
           </Form.Item>
         </Space>
 
-        <Divider />
+        <hr style={{ border: 0, borderTop: "1px solid var(--rule)", margin: "24px 0" }} />
 
         <Form.Item>
-          <Button type="primary" htmlType="submit" icon={<SaveOutlined />} loading={saving} disabled={!dirty} size="large">
+          <Button variant="primary" htmlType="submit" icon={<SaveOutlined />} loading={saving} disabled={!dirty} size="large">
             Save changes
           </Button>
         </Form.Item>

@@ -78,6 +78,9 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
   if (authorized !== true) {
     return (
       <div
+        role="status"
+        aria-live="polite"
+        aria-label="Checking your session"
         style={{
           minHeight: "60vh",
           display: "flex",

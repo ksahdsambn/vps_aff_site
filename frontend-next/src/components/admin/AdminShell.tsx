@@ -93,12 +93,12 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         display: "flex",
         alignItems: "center",
         paddingLeft: 20,
-        color: "#fff",
+        color: "var(--accent-contrast)",
         fontFamily: "var(--font-display)",
         fontWeight: 600,
         fontSize: "1.05rem",
         letterSpacing: "0.02em",
-        borderBottom: "1px solid rgba(255,255,255,0.08)",
+        borderBottom: "1px solid var(--rule-inverse)",
       }}
     >
       NAVIGATOR
@@ -126,8 +126,8 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           width={232}
           style={{
             background: "var(--ink)",
-            // 深色侧栏与浅色内容之间用半透明白色细线分隔（深底上的 hairline）。
-            borderRight: "1px solid rgba(255,255,255,0.08)",
+            // 深色侧栏与浅色内容之间用 inverse hairline 分隔（深底上的细线）。
+            borderRight: "1px solid var(--rule-inverse)",
           }}
         >
           {brand}

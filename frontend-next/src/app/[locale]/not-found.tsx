@@ -40,20 +40,10 @@ export default async function LocaleNotFound({
         fontFamily: "var(--font-body), system-ui, sans-serif",
       }}
     >
-      <h1
-        style={{
-          fontFamily: "var(--font-display), Georgia, serif",
-          fontSize: "clamp(4rem, 14vw, 6rem)",
-          margin: 0,
-          color: "var(--accent)",
-          fontWeight: 600,
-          lineHeight: 1,
-          letterSpacing: "-0.04em",
-        }}
-      >
+      <div aria-hidden="true" style={{ fontFamily: "var(--font-display), Georgia, serif", fontSize: "clamp(4rem, 14vw, 6rem)", lineHeight: 1, color: "var(--accent)", fontWeight: 600, letterSpacing: "-0.04em" }}>
         404
-      </h1>
-      <h2
+      </div>
+      <h1
         style={{
           fontFamily: "var(--font-display), Georgia, serif",
           marginTop: 16,
@@ -64,17 +54,18 @@ export default async function LocaleNotFound({
         }}
       >
         {title}
-      </h2>
+      </h1>
       <p style={{ color: "var(--muted)", fontSize: 16, lineHeight: 1.8, marginBottom: 28 }}>{desc}</p>
       <Link
         href={`/${locale}`}
+        className="boundary-link"
         style={{
           display: "inline-flex",
           alignItems: "center",
           justifyContent: "center",
           minHeight: 44,
           padding: "0 28px",
-          borderRadius: 8,
+          borderRadius: "var(--r-control)",
           background: "var(--accent)",
           color: "var(--accent-contrast)",
           textDecoration: "none",

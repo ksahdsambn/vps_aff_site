@@ -36,7 +36,10 @@ function LoginPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const sessionExpired = searchParams.get("reason") === "expired";
-  const redirectTo = searchParams.get("from") || "/admin/products";
+  // 开放重定向防护：from 仅允许站内 admin 路径（必须以 /admin/ 开头）。
+  // 防止 ?from=https://evil.com 形式的钓鱼跳转。其余一律回退到默认 dashboard。
+  const rawRedirect = searchParams.get("from") || "/admin/products";
+  const redirectTo = rawRedirect.startsWith("/admin/") ? rawRedirect : "/admin/products";
 
   // 已登录用户访问登录页时直接跳转 dashboard，避免重复登录。
   useEffect(() => {
@@ -98,6 +101,7 @@ function LoginPageInner() {
         <Form name="admin_login" onFinish={onFinish} layout="vertical" size="large">
           <Form.Item
             name="username"
+            label="Username"
             rules={[{ required: true, message: "Please enter your username." }]}
           >
             <Input prefix={<UserOutlined />} placeholder="Username" maxLength={100} autoComplete="username" />
@@ -105,6 +109,7 @@ function LoginPageInner() {
 
           <Form.Item
             name="password"
+            label="Password"
             rules={[{ required: true, message: "Please enter your password." }]}
           >
             <Input.Password prefix={<LockOutlined />} placeholder="Password" maxLength={200} autoComplete="current-password" />

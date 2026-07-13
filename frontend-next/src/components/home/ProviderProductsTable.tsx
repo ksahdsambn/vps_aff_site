@@ -1,6 +1,6 @@
 "use client";
 
-import { Table, Typography, Tooltip, Empty } from "antd";
+import { Table, Tooltip, Empty } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useTranslation } from "react-i18next";
 import { QuestionCircleOutlined, ShoppingCartOutlined } from "@ant-design/icons";
@@ -9,6 +9,7 @@ import type { Product } from "@/lib/api";
 import type { Locale } from "@/lib/i18n";
 import Button from "@/components/ui/Button";
 import { formatNum, formatTraffic, formatBandwidth, formatPrice } from "@/lib/format";
+import styles from "./ProviderProductsTable.module.css";
 
 /**
  * 服务商聚合页的产品表格（客户端组件）—— Editorial-Data Minimal。
@@ -32,10 +33,8 @@ export default function ProviderProductsTable({
       width: 160,
       ellipsis: true,
       render: (text, record) => (
-        <Link href={`/${locale}/products/${record.id}`} className="name-link">
-          <Typography.Text strong style={{ color: "var(--ink)" }}>
-            {text}
-          </Typography.Text>
+        <Link href={`/${locale}/products/${record.id}`} className={styles.nameLink}>
+          {text}
         </Link>
       ),
     },

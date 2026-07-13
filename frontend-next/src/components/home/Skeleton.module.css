@@ -1,0 +1,88 @@
+/*
+ * Token-based skeleton placeholder.
+ *
+ * AntD <Skeleton active> uses a linear-gradient shimmer over hardcoded cool grays
+ * (#f2f2f2→#e6e6e6) — that violates the "no gradients" rule, clashes with the
+ * warm paper, and can't retune for dark mode. Instead, the placeholder bars use
+ * a pure opacity pulse between --surface-alt and transparent (no gradient),
+ * keeping the warm palette and dark-mode-readiness. Reduced-motion zeroes it.
+ *
+ * Block metrics mirror ProductCard.module.css / ProductTable so there's no layout
+ * shift when real content swaps in.
+ */
+
+.bar {
+  display: inline-block;
+  background: var(--surface-alt);
+  border-radius: 4px;
+  animation: skeletonPulse var(--dur) var(--ease-out) infinite alternate;
+}
+
+.barSm {
+  height: 14px;
+}
+
+.tableRow {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+
+.cardList {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-card);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.cardRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.rule {
+  border: 0;
+  border-top: 1px solid var(--rule);
+  margin: 14px 0;
+}
+
+.specGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 16px;
+}
+
+@keyframes skeletonPulse {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.45;
+  }
+}
+
+@media (max-width: 600px) {
+  .cardList {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .card {
+    padding: 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bar {
+    animation: none;
+  }
+}

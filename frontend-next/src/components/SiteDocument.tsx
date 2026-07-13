@@ -10,7 +10,14 @@ const GSC_VERIFICATION = process.env.NEXT_PUBLIC_GSC_VERIFICATION || "";
 
 const fraunces = Fraunces({ subsets: ["latin"], axes: ["opsz", "SOFT"], variable: "--font-fraunces", display: "swap" });
 const manrope = Manrope({ subsets: ["latin"], variable: "--font-manrope", display: "swap" });
-const notoSansSC = Noto_Sans_SC({ subsets: ["latin"], variable: "--font-noto", display: "swap" });
+/*
+ * Noto Sans SC 是简体中文字体。仅请求 "latin" subset 会让中文字形不在自托管
+ * 字体中，中文标题/正文静默回退到 Georgia/system-ui，破坏双语等价原则。CJK 字体
+ * 在 next/font 中不能用 subsets 自动裁剪（字形集过大），正确做法是不指定 subsets
+ * + preload:false（避免预加载无意义的大字体，改由浏览器按需按 unicode-range 拉取），
+ * 配合 variable 注入 --font-noto 供 fallback 链使用。
+ */
+const notoSansSC = Noto_Sans_SC({ variable: "--font-noto", display: "swap", preload: false });
 
 export const siteMetadata: Metadata = {
   metadataBase: new URL(SITE_URL),

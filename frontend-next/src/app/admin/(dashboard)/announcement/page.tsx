@@ -111,10 +111,11 @@ export default function AdminAnnouncementPage() {
     content: string,
     setContent: React.Dispatch<React.SetStateAction<string>>,
     saveHandler: () => void,
-    saving: boolean
+    saving: boolean,
+    langLabel: string
   ) => (
     <Row gutter={24}>
-      <Col span={12}>
+      <Col xs={24} lg={12}>
         <Title level={5}>Markdown Editor</Title>
         <Input.TextArea
           value={content}
@@ -123,20 +124,23 @@ export default function AdminAnnouncementPage() {
           maxLength={10000}
           showCount
           placeholder="Write your announcement here. Markdown is supported."
-          style={{ fontFamily: "monospace" }}
+          aria-label={`Markdown editor — ${langLabel}`}
+          style={{ fontFamily: "var(--font-mono)" }}
         />
         <Button type="primary" onClick={saveHandler} loading={saving} style={{ marginTop: 16 }}>
           Save changes
         </Button>
       </Col>
-      <Col span={12}>
+      <Col xs={24} lg={12}>
         <Title level={5}>Live Preview</Title>
         <div
+          role="region"
+          aria-label={`Live preview — ${langLabel}`}
           style={{
             padding: 16,
             background: "var(--surface-alt)",
             border: "1px solid var(--rule)",
-            borderRadius: 8,
+            borderRadius: "var(--r-control)",
             minHeight: 450,
           }}
         >
@@ -165,7 +169,8 @@ export default function AdminAnnouncementPage() {
               () => {
                 void handleSave("announcement_zh", zhContent, setSavingZh);
               },
-              savingZh
+              savingZh,
+              "Chinese"
             ),
           },
           {
@@ -177,7 +182,8 @@ export default function AdminAnnouncementPage() {
               () => {
                 void handleSave("announcement_en", enContent, setSavingEn);
               },
-              savingEn
+              savingEn,
+              "English"
             ),
           },
         ]}
