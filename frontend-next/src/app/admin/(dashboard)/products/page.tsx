@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import {
   Table,
-  Button,
   Input,
   Modal,
   Form,
@@ -23,6 +22,7 @@ import {
   getApiErrorMessage,
 } from "@/lib/api";
 import type { Product, ProductFormData, ProductUpdatePayload } from "@/lib/api";
+import Button from "@/components/ui/Button";
 
 const { Option } = Select;
 
@@ -278,7 +278,7 @@ export default function AdminProductsPage() {
       key: "actions",
       render: (_value: unknown, record: Product) => (
         <Space size="middle">
-          <Button type="link" icon={<EditOutlined />} onClick={() => showEditModal(record)}>
+          <Button variant="text" size="middle" icon={<EditOutlined />} onClick={() => showEditModal(record)}>
             Edit
           </Button>
           <Popconfirm
@@ -290,7 +290,7 @@ export default function AdminProductsPage() {
             disabled={deletingId !== null}
             onConfirm={() => handleDelete(record.id)}
           >
-            <Button type="link" danger icon={<DeleteOutlined />} disabled={deletingId !== null} loading={deletingId === record.id}>
+            <Button variant="text" danger size="middle" icon={<DeleteOutlined />} disabled={deletingId !== null} loading={deletingId === record.id}>
               Delete
             </Button>
           </Popconfirm>
@@ -317,8 +317,10 @@ export default function AdminProductsPage() {
           onChange={(event) => handleSearchInputChange(event.target.value)}
           style={{ width: "min(320px, 100%)", flex: 1, minWidth: 200 }}
           allowClear
+          aria-label="Search products"
+          enterButton="Search"
         />
-        <Button type="primary" icon={<PlusOutlined />} onClick={showAddModal}>
+        <Button variant="primary" size="large" icon={<PlusOutlined />} onClick={showAddModal}>
           Add product
         </Button>
       </div>

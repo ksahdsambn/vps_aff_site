@@ -1763,3 +1763,138 @@ tap-target 要求）。同模块的 `.skip` 链接此前已修过同样问题。
 
 - 工作区改动合并至 `master`，推送到 `origin`（GitHub）。
 
+---
+
+## 2026-07-13 — 界面质量审计与全量修复（audit 技能）
+
+**执行 AI 模型：ZCode (builtin:bigmodel-coding-plan/GLM-5.2)**
+
+使用 `audit` 技能对全站做系统性界面质量审计，覆盖公共页面（首页/详情/服务商/隐私/404/
+错误）、共享 UI 原子（Button/SpecStat/Header/Footer/Announcement）、Admin 后台与所有边界
+页面。产出 33 项问题（Critical 4 / High 9 / Medium 13 / Low 7），随后**按严重级别顺序**
+逐条修复。严格遵循 `markdown/AGENTS.md` 设计上下文（无新增 hex/渐变/glass/bounce/
+translateY，统一走 token 与 ease-out-quart）。
+
+**总体结论**：主流程（首页表格/卡片、详情、Header/Footer/Button/SpecStat）质量很高，是
+正面样板；问题集中在**边界页**（error/404/skeleton）与 **Admin**——典型「主流程打磨到位、
+边缘被遗忘」模式。
+
+### 新增设计 token（globals.css，供未来暗色主题一处重调）
+
+| Token | 值 | 用途 |
+|---|---|---|
+| `--shadow-card` | `0 1px 2px 0 rgba(26,29,41,.04), 0 8px 24px -8px rgba(26,29,41,.08)` | 双层卡片投影（Login 卡片等），替代散落硬编码 |
+| `--rule-inverse` | `rgba(255,255,255,.08)` | 深色表面（var(--ink)）上的分隔线 |
+| `--font-mono` | `ui-monospace, SFMono-Regular, …` | Markdown/代码编辑器等宽字体 |
+| `.boundary-cta` / `.boundary-link` | `:focus-visible { outline:2px var(--accent); offset:2px }` | 原生 button/link 边界页共享焦点环 |
+
+### Critical（4/4）
+
+| # | 修复 | 文件 |
+|---|---|---|
+| C1 | 根 404 加 `import "./globals.css"`，使 token 在无根 layout 上下文中有定义（**不**自带 `<html>/<body>`——Next.js 已注入外壳，自带会导致嵌套 `<html>`） | `not-found.tsx` |
+| C2 | global-error 导入 globals.css，全量 hex→token，`lang="zh-CN"`→`"en"`，补「Back to Home」恢复链接 | `global-error.tsx` |
+| C3 | Announcement 折叠按钮 `size="small"`→`"middle"` + CSS `min-height:44px`（WCAG 2.5.5） | `Announcement.tsx/.module.css` |
+| C4 | admin/error 全量 token 化 + `.boundary-cta/link` 焦点环 | `admin/error.tsx`, `globals.css` |
+
+### High（9/9）
+
+| # | 修复 | 文件 |
+|---|---|---|
+| H1 | 自定义 token 化骨架屏（opacity 脉冲，替代 AntD Skeleton `linear-gradient` shimmer + 硬编码冷灰）+ `aria-busy`/`role="status"` | `ProductSkeleton.tsx`, 新增 `Skeleton.module.css` |
+| H2 | 公告编辑器 TextArea 加 `aria-label`，预览区加 `role="region"`+`aria-label` | `announcement/page.tsx` |
+| H3 | 产品搜索框加 `aria-label="Search products"` + `enterButton="Search"` | `products/page.tsx` |
+| H4 | Admin products/settings 原生 `antd.Button`→共享 `ui/Button`（44px 触达保证） | `products/page.tsx`, `settings/page.tsx` |
+| H5 | （含于 C4）原生控件 focus 环 | `admin/error.tsx` |
+| H6 | （含于 C2）`lang` 修正 | `global-error.tsx` |
+| H7 | （含于 C2）恢复链接 | `global-error.tsx` |
+| H8 | 公告编辑器/预览 `Col span={12}`→`xs={24} lg={12}`（移动端堆叠） | `announcement/page.tsx` |
+| H9 | Noto Sans SC `subsets:["latin"]`→`preload:false`（CJK 字形可用，不再静默回退） | `SiteDocument.tsx` |
+
+### Medium（13/13）
+
+- Login/AdminShell：阴影 `rgba(...)`→`--shadow-card`、`#fff`→`--accent-contrast`、inverse hairline→`--rule-inverse`（M1/M2）。
+- 隐私页正文对比度 `--muted`→`--text`（M3）。
+- 首页 `h1` 语义：品牌降为 div（`asH1={false}`），sr-only `h2`→`h1` 承载真实页面主题（M4）。
+- locale 404 数字装饰化（`aria-hidden`），「Page Not Found」升为 h1（M5）。
+- Announcement a11y：`aria-controls`+`role="region"`+图标 `aria-hidden`，`aria-label` 走 `t(...)` 本地化（M6）。
+- `.name-link` 转正式 CSS module（hover→accent + focus-visible 焦点环），移除冗余 `Typography.Text`（M9）。
+- locale error 加 `role="alert"`（M10）。
+- 登录表单加 `label="Username/Password"`（M11）。
+- `(redirect)` 页 `headers()`/`redirect()` 包 try/catch 降级（M12）。
+- 登录开放重定向防护：`from` 必须以 `/admin/` 开头（M13）。
+- settings 分区标题去重（共享 `sectionHeadingStyle`，AntD 6 Divider `orientation` 已破坏性变更仅接受 horizontal/vertical）。
+
+### Low（7/7）
+
+- AuthGuard Spin 加 `role="status"`/`aria-live`（L1）。
+- Announcement 过渡 `0.3s`→`var(--dur)`（L4）。
+- 隐私页补「最后更新」日期（L5）。
+- 根 404 `href="/zh"`→`href="/"`（经 `(redirect)` 探测 Accept-Language）（L7）。
+- LanguageSwitcher 去重 `aria-label`（与可见文本重复）（复查补充）。
+
+### 复查中发现并修复的回归（自审，Critical）
+
+**`not-found.tsx` 双重 `<html>` 嵌套**：首次实现为根 404 加了自带 `<html lang="en"><body>`，
+但实际构建产物 `_not-found.html` 检查发现 **2 个 `<html>` + 2 个 `<body>`** 嵌套——Next.js
+已为 not-found 自动注入最小 `<html><head>` 外壳（并自动加载 globals.css），组件再渲染一层
+产生无效标记 + hydration 警告。
+
+**根因**：对 C1 前提判断部分错误——外部外壳确实存在且加载 globals.css（原代码 token 非完全
+失效，仅 Fraunces/Manrope 字体变量不在该外壳内，回退 Georgia）。
+
+**修复**：移除组件内 `<html>/<body>`，仅保留 `import "./globals.css"`（提升进自动 `<head>`）+
+`<main>` 内容。修复后产物确认 `_not-found.html` = **1 `<html>` / 1 `<body>`**。
+（`global-error.tsx` 的 `<html>/<body>` 是必需的——Next.js 规定 global-error 替代根布局，
+产物确认恰好 1 `<html>`/`<body>`。）
+
+### 收尾修复（代码审查的非阻塞观察）
+
+- `privacy/page.tsx` 两处无插值模板字面量 → 普通字符串（风格）。
+- 3 个文件 CRLF→LF 归一化（`page.tsx` 131、`privacy/page.tsx` 200、`ProductSkeleton.tsx` 73
+  个 CRLF→0），消除 working-tree「CRLF will be replaced by LF」警告（`.gitattributes` 要求 `eol=lf`）。
+- 第 3 项观察（新 token 仅单处使用）保留不改——符合 AGENTS.md「集中 token 供未来暗色重调」原则。
+
+### 验证结果
+
+- `npx eslint src/`：✅ exit 0（0 错误）
+- `next build`（含 TypeScript 全量类型检查）：✅ exit 0，16/16 路由预渲染，零警告
+- **编译产物逐项核对**：
+  - `_not-found.html` = 1 `<html>` / 1 `<body>`，globals.css 已链接，`var(--paper)` 已解析，`boundary-link` focus 类与恢复链接均存在 ✅
+  - `_global-error.html` = 1 `<html>` / 1 `<body>`，globals.css 已链接 ✅
+  - zh/en privacy 各自渲染正确「最后更新」日期 ✅
+- `git add -n -A` 全量 dry-run：✅ 无任何 CRLF 警告
+
+### 修改文件清单（22 改 + 2 新增，+323/−201）
+
+| 文件 | 改动 |
+|------|------|
+| `frontend-next/src/app/global-error.tsx` | 导入 globals.css；全量 hex→token；lang→en；补恢复链接 |
+| `frontend-next/src/app/not-found.tsx` | 导入 globals.css；href→/；boundary-link focus；双语顺序调整 |
+| `frontend-next/src/app/globals.css` | 新增 `--shadow-card`/`--rule-inverse`/`--font-mono` token + boundary focus 类 |
+| `frontend-next/src/app/[locale]/error.tsx` | 加 `role="alert"`；boundary-cta/link focus；radius→token |
+| `frontend-next/src/app/[locale]/not-found.tsx` | 404 数字装饰化（aria-hidden），文字升 h1；boundary-link focus |
+| `frontend-next/src/app/[locale]/page.tsx` | Header `asH1={false}`，sr-only `h2`→`h1` |
+| `frontend-next/src/app/[locale]/privacy/page.tsx` | 正文对比度→`--text`；补「最后更新」日期；模板字面量→字符串 |
+| `frontend-next/src/app/(redirect)/page.tsx` | headers/redirect 包 try/catch 降级 |
+| `frontend-next/src/app/admin/error.tsx` | 全量 token 化；boundary focus 环；page-enter |
+| `frontend-next/src/app/admin/login/page.tsx` | 开放重定向防护；表单加 label |
+| `frontend-next/src/app/admin/login/Login.module.css` | 阴影→`--shadow-card` |
+| `frontend-next/src/app/admin/(dashboard)/announcement/page.tsx` | TextArea/预览 aria-label；Col 响应式；`--font-mono`；radius→token |
+| `frontend-next/src/app/admin/(dashboard)/products/page.tsx` | 共享 Button；搜索 aria-label+enterButton |
+| `frontend-next/src/app/admin/(dashboard)/settings/page.tsx` | 共享 Button；分区标题去重（sectionHeadingStyle）；Divider→hr |
+| `frontend-next/src/components/Announcement.tsx` | 折叠按钮 size middle；aria-controls+region；图标 aria-hidden；aria-label 本地化 |
+| `frontend-next/src/components/Announcement.module.css` | toggleBtn 44px；过渡→`var(--dur)` |
+| `frontend-next/src/components/LanguageSwitcher.tsx` | 去重 aria-label |
+| `frontend-next/src/components/SiteDocument.tsx` | Noto Sans SC preload:false（CJK 可用） |
+| `frontend-next/src/components/admin/AdminShell.tsx` | #fff→token；inverse hairline→`--rule-inverse` |
+| `frontend-next/src/components/admin/AuthGuard.tsx` | Spin role=status/aria-live |
+| `frontend-next/src/components/home/ProductSkeleton.tsx` | 自定义 token 化骨架屏（无渐变 shimmer） |
+| `frontend-next/src/components/home/ProviderProductsTable.tsx` | name-link→CSS module；移除冗余 Typography |
+| `frontend-next/src/components/home/Skeleton.module.css` | **新增**：token 化骨架屏样式（opacity 脉冲 + reduced-motion 门控） |
+| `frontend-next/src/components/home/ProviderProductsTable.module.css` | **新增**：nameLink hover/focus 样式 |
+
+### 部署操作
+
+- 工作区改动合并至 `master`，推送到 `origin`（GitHub）。
+

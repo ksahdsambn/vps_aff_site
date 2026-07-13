@@ -3,8 +3,13 @@ import { headers } from "next/headers";
 import { defaultLocale, type Locale } from "@/lib/i18n";
 
 export default async function RootPage() {
-  const acceptLang = (await headers()).get("accept-language") || "";
-  redirect(`/${pickLocale(acceptLang)}`);
+  try {
+    const acceptLang = (await headers()).get("accept-language") || "";
+    redirect(`/${pickLocale(acceptLang)}`);
+  } catch {
+    // headers()/redirect() 抛错（如运行时不支持）时降级到默认 locale，避免裸 500。
+    redirect(`/${defaultLocale}`);
+  }
 }
 
 function pickLocale(acceptLanguage: string): Locale {

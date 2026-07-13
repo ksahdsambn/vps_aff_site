@@ -39,24 +39,30 @@ const Announcement: React.FC<AnnouncementProps> = ({ config }) => {
   }
 
   return (
-    <aside className={styles.container} aria-label="Announcement">
+    <aside className={styles.container} aria-label={t("announcement.title")}>
       <div className={styles.header}>
         <div className={styles.title}>
-          <NotificationOutlined className={styles.icon} />
+          <NotificationOutlined aria-hidden="true" className={styles.icon} />
           <span>{t("announcement.title")}</span>
         </div>
         <Button
           type="text"
-          size="small"
+          size="middle"
           onClick={() => setExpanded(!expanded)}
           className={styles.toggleBtn}
           aria-expanded={expanded}
+          aria-controls="announcement-content"
         >
-          <CaretDownOutlined className={`${styles.chevron} ${expanded ? styles.chevronUp : ""}`} />
+          <CaretDownOutlined aria-hidden="true" className={`${styles.chevron} ${expanded ? styles.chevronUp : ""}`} />
           {expanded ? t("announcement.collapse") : t("announcement.expand")}
         </Button>
       </div>
-      <div className={`${styles.content} ${expanded ? styles.expanded : styles.collapsed}`}>
+      <div
+        id="announcement-content"
+        role="region"
+        aria-label={t("announcement.title")}
+        className={`${styles.content} ${expanded ? styles.expanded : styles.collapsed}`}
+      >
         <ReactMarkdown {...markdownOptions}>{content}</ReactMarkdown>
       </div>
     </aside>

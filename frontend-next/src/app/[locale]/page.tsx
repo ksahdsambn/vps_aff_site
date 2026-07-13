@@ -63,13 +63,14 @@ export default async function LocaleHomePage({ params }: HomePageProps) {
         dangerouslySetInnerHTML={{ __html: safeJsonLd(productGraphJsonLd) }}
       />
 
-      <Header config={config} locale={locale} />
+      <Header config={config} locale={locale} asH1={false} />
       <Announcement config={config} />
 
-      {/* 视觉隐藏的语义标题（阶段 8 标题层级修复的一部分） */}
-      <h2 className="sr-only">
+      {/* 视觉隐藏的语义 h1：首页真正的页面主题。Header 渲染为 div（asH1={false}），
+          避免品牌名占用 h1，使 SEO/读屏器以「VPS 产品价格对比」为主标题。 */}
+      <h1 className="sr-only">
         {locale === "zh" ? "VPS 产品价格对比" : "VPS Product Price Comparison"}
-      </h2>
+      </h1>
 
       <HomeClient
         initialProducts={initialProducts}

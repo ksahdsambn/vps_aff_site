@@ -19,6 +19,9 @@
   --font-display: var(--font-fraunces), var(--font-noto), Georgia, serif;
   --font-body: var(--font-manrope), var(--font-noto), system-ui, -apple-system, sans-serif;
   --font-family: var(--font-body);
+  /* Monospace：用于代码/Markdown 编辑器等需要等宽对齐的场景（Admin 公告编辑器）。
+   * 未自托管等宽字体，回退到合理的系统等宽栈，保持暗色就绪（变量化，无硬编码）。 */
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
 
   /* Palette — warm tinted neutrals + single accent */
   --ink: #1a1d29;          /* headings — tinted near-black */
@@ -59,8 +62,17 @@
    * [data-theme="dark"] block can retune this toward a light tint without touching
    * component CSS. Kept as a color token (not the full box-shadow) so call sites
    * control blur/offset while the hue stays centralized.
+   *
+   * --shadow-ink-* 是完整的语义阴影 token（双层卡片投影），集中 ink 色调与透明度，
+   * 使未来暗色主题可在此一处重调，而非散落在各组件（如 Login 卡片）。
    */
   --shadow-ink-faint: rgba(26, 29, 41, 0.03);
+  --shadow-card: 0 1px 2px 0 rgba(26, 29, 41, 0.04), 0 8px 24px -8px rgba(26, 29, 41, 0.08);
+  /*
+   * Inverse hairline：用于深色表面（var(--ink)）上的分隔线。light 模式为半透明白，
+   * 未来 [data-theme="dark"] 可在此重调为半透明深色（当深色表面语义反转时）。
+   */
+  --rule-inverse: rgba(255, 255, 255, 0.08);
 
   /* Breakpoints (reference) */
   --breakpoint-sm: 576px;
@@ -247,6 +259,19 @@ h1, h2, h3, h4, h5, h6 {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+}
+
+/*
+ * —— Boundary / error-page focus rings ——
+ * 原生 button/link（error.tsx / not-found.tsx 等不依赖 AntD 的边界页）无默认焦点环。
+ * 这些页面用内联样式渲染，无 CSS module 可挂 :focus-visible，故在全局提供共享
+ * focus 类。所有边界页都已 import globals.css（global-error / 根 not-found 自带，
+ * admin/error 与 [locale]/error 经各自 layout 注入），故规则在此集中可用。
+ */
+.boundary-cta:focus-visible,
+.boundary-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 /*
