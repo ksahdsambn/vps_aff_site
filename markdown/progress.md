@@ -1898,3 +1898,68 @@ translateY，统一走 token 与 ease-out-quart）。
 
 - 工作区改动合并至 `master`，推送到 `origin`（GitHub）。
 
+---
+
+## 2026-07-17 · 修复 backend/Dockerfile 部署阻塞 Bug（migrate 阶段缺 prisma CLI）
+
+### 背景
+
+首次用 `docker compose up -d` 部署到生产服务器时，`migrate` 服务立即失败退出（exit 1），
+阻塞整个栈启动。`migrate` 容器日志：
+
+```
+Failed to load config file "/app/prisma.config.ts" ... Cannot find module 'prisma/config'
+```
+
+### 根因
+
+1. `prisma` CLI 是 `backend/package.json` 中的 **devDependency**（`^7.8.0`），
+   `@prisma/client` 才在生产依赖里。
+2. 原 `backend/Dockerfile` 在 `builder` 阶段执行
+   `npm run build && npm prune --omit=dev --omit=optional`，把 `prisma`（含 `prisma/config`）
+   连同其他 devDeps 一起剪除。
+3. `docker-compose.yml` 的 `migrate` 服务用 `target: builder`，于是它拿到的是被剪除后的
+   `node_modules`；运行 `npx prisma migrate deploy` 时，`prisma.config.ts` 的
+   `import { defineConfig } from "prisma/config"` 解析失败 → 容器退出 1。
+4. `backend`（runner）服务不受影响：它指向最终 `runner` 阶段，CMD 是 `node dist/index.js`，
+   运行期不需要 prisma CLI。
+
+> 此风险早在 `markdown/stage8-insights.md` 就已记录（"生产容器需运行 `prisma migrate deploy`，
+> 若 CLI 只在 devDependencies 则运行镜像会缺迁移命令"），但当时未触发，遗留至今。
+
+### 方案：把 prune 从 builder 下移到 runner 阶段
+
+社区惯用法，最小改动、层级清晰，不引入 `cp -a` 之类的笨重变通：
+
+- `builder`：只 `npm run build`，**不再 prune** → 完整 `node_modules`（含 prisma CLI），
+  `migrate`（`target: builder`）由此天然可用。
+- `runner`：`COPY --from=builder /app ./` 后原地 `npm prune --omit=dev --omit=optional`
+  → 运行镜像只保留生产依赖，体积与原先一致。
+
+`docker-compose.yml` 无需改动（`migrate` 的 `target: builder` 现在天然正确）。
+
+### 验证（本地 Docker 29.6.1）
+
+- `docker build --target builder`（= migrate 镜像）：
+  - `node_modules/.bin/prisma` 存在 ✅
+  - `node_modules/prisma/config.js` 存在 ✅（此前失败的直接症状已消除）
+  - `prisma --version` 能从 `prisma.config.ts` 加载配置 ✅
+- `docker build`（= runner 镜像，最终阶段）：
+  - `node_modules/.bin/prisma` / `node_modules/prisma` **不存在** ✅（prune 仍生效，镜像精简）
+  - `@prisma/client`（生产依赖）**仍存在** ✅
+  - `dist/index.js` 存在，应用可启动（无 DB env 时按设计抛错，证明产物完整）✅
+- 后端测试套件 `npm test`（= `tsc` + `node --test` 5 个 .cjs）：**11/11 通过**，0 失败 ✅
+
+### 修改文件清单
+
+| 文件 | 改动 |
+|------|------|
+| `backend/Dockerfile` | builder 阶段去掉 `npm prune`；新增 runner 阶段 `COPY --from=builder /app ./` + `RUN npm prune --omit=dev --omit=optional` |
+| `markdown/progress.md` | 追加本条记录 |
+
+（`docker-compose.yml` 无需改动。）
+
+### 部署操作
+
+- 分支 `fix/dockerfile-prisma-migrate`，提交并推送 `origin`，合并回 `master`。
+
