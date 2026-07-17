@@ -1963,3 +1963,56 @@ Failed to load config file "/app/prisma.config.ts" ... Cannot find module 'prism
 
 - 分支 `fix/dockerfile-prisma-migrate`，提交并推送 `origin`，合并回 `master`。
 
+---
+
+## 2026-07-17：版本控制清理 — untrack `backend/dist`、忽略 Python 缓存
+
+### 背景（来自一次代码审查）
+
+- 工作区出现 `backend/dist/middleware/errorHandler.*` 的未提交改动，核查后是**源码已先行更新、dist 滞后**的重编产物（非新逻辑）。
+  - `backend/src/middleware/errorHandler.ts` 在 `253cadc fix(harden)` 中已改为：用
+    `typeof === 'number' && Number.isFinite()` 校验 `err.statusCode` / `err.code`，
+    防止 Prisma 字符串型 `err.code`（如 `"P2002"`）污染 HTTP 状态或响应信封。
+  - 本次 dist 改动只是把编译产物补齐到与源码一致，逻辑正确，无新风险。
+- 审查同时发现两项版本控制卫生问题：
+  1. `backend/dist/` 在 `.gitignore` 加入 `dist/`/`**/dist/` 规则**之前**就已被提交，
+     规则对存量追踪文件无效 → 共 **108 个编译产物文件**长期被追踪，
+     每次源码变动都要手动重编并提交 dist，制造 review 噪音与合并冲突风险。
+  2. `.deploy_lib.py` 被导入时生成的 `__pycache__/.deploy_lib.cpython-311.pyc` 出现在工作区，
+     且 `.gitignore` **未包含** `__pycache__/` 或 `*.pyc`，迟早会被误提交。
+
+### 改动
+
+1. **`.gitignore`** — 新增 Python 字节码忽略规则：
+   ```gitignore
+   # Python 字节码缓存（部署脚本等被导入时产生）
+   __pycache__/
+   *.pyc
+   ```
+2. **`__pycache__/`** — 删除本地缓存目录；新规则已 `git check-ignore` 验证命中。
+3. **`backend/dist/`** — `git rm --cached -r backend/dist`：从 git 索引移除全部 108 个文件，
+   **保留磁盘文件**（本地即时运行不受影响）。
+
+### 安全性核查（确认移除追踪不影响构建/部署）
+
+- `backend/.dockerignore` 与根 `.dockerignore` 均已忽略 `backend/dist` →
+  镜像构建从不读取仓库里的 dist。
+- `backend/Dockerfile` 第 21 行 `RUN npm run build` 在 builder 阶段**重新编译生成 dist**；
+  runner 的 `CMD ["node", "dist/index.js"]`（第 37 行）与
+  `docker-compose.yml` migrate 服务的 `node dist/scripts/seedRuntime.js` 用的都是这份构建产物，
+  **不依赖仓库追踪的 dist**。
+- `frontend/dist`、`frontend-next/.next` 经 `git ls-files` 核实均未被追踪 →
+  无其它遗留构建产物技术债。
+
+### 修改文件清单
+
+| 文件 | 改动 |
+|------|------|
+| `.gitignore` | 追加 `__pycache__/`、`*.pyc` |
+| `backend/dist/**`（108 文件） | `git rm --cached`，从索引移除、保留磁盘 |
+| `markdown/progress.md` | 追加本条记录 |
+
+### 部署操作
+
+- 分支 `chore/untrack-dist-and-pycache`，提交并推送 `origin`，合并回 `master`。
+
