@@ -1,6 +1,7 @@
 services:
   db:
     image: mysql:8.0
+    restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: ${MYSQL_DATABASE}
@@ -51,6 +52,7 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+    restart: unless-stopped
     environment:
       NODE_ENV: production
       PORT: ${PORT}
@@ -77,6 +79,7 @@ services:
         BACKEND_URL: http://backend:3000
     depends_on:
       - backend
+    restart: unless-stopped
     environment:
       # 运行时 Next.js 服务端 fetch / rewrites 代理的后端地址
       BACKEND_URL: http://backend:3000
