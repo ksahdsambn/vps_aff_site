@@ -2016,3 +2016,71 @@ Failed to load config file "/app/prisma.config.ts" ... Cannot find module 'prism
 
 - 分支 `chore/untrack-dist-and-pycache`，提交并推送 `origin`，合并回 `master`。
 
+---
+
+## 2026-07-18 · 修复容器在服务器重启后不自启（db/backend/frontend 增加 restart policy）
+
+### 背景
+
+生产服务器（199.47.242.200，项目部署在 `/opt/vps_aff_site`）在 UTC 2026-07-18 12:16 重启后，
+vps_aff_site 的全部 4 个容器停留在 Exited 状态，未自动恢复。SSH 排查记录：
+
+| 容器 | 退出码 | OOMKilled | 含义 |
+|---|---|---|---|
+| db | 0 | false | 系统关机时优雅关闭 |
+| backend | 137 | false | 收到 SIGKILL（系统强制停机时正常） |
+| frontend | 143 | false | 收到 SIGTERM |
+| migrate | 0 | — | 一次性任务，正常退出 |
+
+### 根因
+
+`docker-compose.yml` 的 db / backend / frontend **均未配置 restart policy**（默认 `no`），
+Docker daemon 在系统重启后不会自动拉起这些容器。退出码与 `OOMKilled=false` 排除应用崩溃与
+资源枯竭（内存可用 10Gi、磁盘 10% 使用），纯属缺自启策略导致的服务中断。
+
+### 改动
+
+给三个常驻服务加 `restart: unless-stopped`，`migrate` 保持 `restart: "no"`（一次性迁移任务，
+不该自启；每次 `compose up` 会按 `service_completed_successfully` 依赖幂等重跑 prisma migrate deploy）。
+
+选用 `unless-stopped` 而非 `always`：服务器重启后自动拉起，但手动 `docker stop` 停掉的容器
+保持停止、不会被覆盖。
+
+```diff
+   db:
+     image: mysql:8.0
++    restart: unless-stopped
+     environment: ...
+   backend:
+     depends_on:
+       db: { condition: service_healthy }
+       migrate: { condition: service_completed_successfully }
++    restart: unless-stopped
+     environment: ...
+   frontend:
+     depends_on: [backend]
++    restart: unless-stopped
+     environment: ...
+```
+
+### 部署与验证（生产服务器，仅操作 vps_aff_site）
+
+- 备份服务器原 compose 为 `docker-compose.yml.bak.20260718-223315`。
+- 上传新版 compose（LF 规范化），`docker compose config --quiet` 校验通过。
+- `docker compose up -d` 按依赖顺序重建并启动：db (healthy) → migrate 完成 → backend → frontend。
+- `docker inspect` 确认 db / backend / frontend 的 `RestartPolicy` 均为 `unless-stopped`。
+- 冒烟：`frontend:8082` → HTTP 307（locale 重定向，正常）；backend 日志 `Server running on port 3000`；
+  frontend 日志 `Next.js 16.2.10 ✓ Ready`。
+- 其余无关容器（matomo、wa-*、password-generator、uptime-kuma 等）未触碰。
+
+### 修改文件清单
+
+| 文件 | 改动 |
+|------|------|
+| `docker-compose.yml` | db / backend / frontend 各加 `restart: unless-stopped`（3 行） |
+| `markdown/progress.md` | 追加本条记录 |
+
+### 部署操作
+
+- 分支 `fix/compose-restart-policy`，提交并推送 `origin`，合并回 `master`。
+
