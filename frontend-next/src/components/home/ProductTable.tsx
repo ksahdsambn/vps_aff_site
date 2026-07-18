@@ -8,6 +8,7 @@ import { QuestionCircleOutlined, ShoppingCartOutlined } from "@ant-design/icons"
 import type { Product } from "@/lib/api";
 import Button from "@/components/ui/Button";
 import { formatNum, formatTraffic, formatBandwidth, formatPrice } from "@/lib/format";
+import { goLink } from "@/lib/links";
 
 const { Text } = Typography;
 
@@ -174,9 +175,9 @@ const ProductTable: React.FC<ProductTableProps> = ({ data, loading, pagination, 
         <Button
           variant="primary"
           size="middle"
-          href={record.affiliateUrl}
+          href={goLink(record.id)}
           target="_blank"
-          rel="noopener noreferrer"
+          rel="nofollow sponsored noopener noreferrer"
           icon={<ShoppingCartOutlined />}
         >
           {t("table.orderButton")}

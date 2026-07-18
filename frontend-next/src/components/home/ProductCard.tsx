@@ -14,6 +14,7 @@ import type { Product } from "@/lib/api";
 import SpecStat from "@/components/ui/SpecStat";
 import Button from "@/components/ui/Button";
 import { formatNum, formatTraffic, formatBandwidth, formatPrice } from "@/lib/format";
+import { goLink } from "@/lib/links";
 import styles from "./ProductCard.module.css";
 
 interface ProductCardProps {
@@ -167,9 +168,9 @@ const ProductCardList: React.FC<ProductCardProps> = ({
                 <Button
                   variant="primary"
                   size="large"
-                  href={item.affiliateUrl}
+                  href={goLink(item.id)}
                   target="_blank"
-                  rel="noopener noreferrer"
+                  rel="nofollow sponsored noopener noreferrer"
                   icon={<ShoppingCartOutlined />}
                   className={styles.primaryCta}
                 >

@@ -7,6 +7,16 @@ import { parseStrictPositiveId } from '../utils/productValidation';
 
 const ALLOWED_SORT_FIELDS = ['cpu', 'memory', 'disk', 'monthlyTraffic', 'bandwidth', 'price'];
 
+/**
+ * 公共产品查询统一排除的字段。
+ *
+ * `affiliateUrl` 是商家真实推广链接（B 域名），仅在 `/api/go/:id` 跳转端点按需返回。
+ * 公共列表/详情/服务商聚合接口剥离该字段，避免前端 HTML 虽经 /go/ 中转隐藏了 URL，
+ * 但通过 F12 抓取 /api/products 的 JSON 响应仍可批量采集真实推广域名。
+ * admin 接口（adminController）不受此限制，后台编辑仍需回填该字段。
+ */
+const PUBLIC_PRODUCT_OMIT = { omit: { affiliateUrl: true } } as const;
+
 function normalizeQueryText(value: unknown): string | undefined {
   if (typeof value !== 'string') {
     return undefined;
@@ -59,6 +69,7 @@ export async function getProducts(req: Request, res: Response, _next: NextFuncti
         skip,
         take: pageSize,
         orderBy,
+        ...PUBLIC_PRODUCT_OMIT,
       }),
     ]);
 
@@ -130,6 +141,7 @@ export async function getProductById(req: Request, res: Response, _next: NextFun
 
     const product = await prisma.product.findFirst({
       where: { id, isDeleted: false },
+      ...PUBLIC_PRODUCT_OMIT,
     });
 
     if (!product) {
@@ -162,11 +174,50 @@ export async function getProductsByProvider(req: Request, res: Response, _next: 
       where: { provider: providerName, isDeleted: false },
       orderBy: { price: 'asc' },
       take: 200,
+      ...PUBLIC_PRODUCT_OMIT,
     });
 
     successResponse(res, list);
   } catch (error) {
     logError('Get products by provider error', error);
+    errorResponse(res, ERROR_CODES.INTERNAL_ERROR, 'Internal server error', 500);
+  }
+}
+
+/**
+ * GET /api/go/:id — 推广链接中转端点。
+ *
+ * 仅返回 { id, affiliateUrl }，供前端 /go/[id] 跳转路由服务端查询真实商家推广 URL。
+ * 这是 affiliateUrl 从公共产品接口剥离后，唯一获取该字段的入口（admin 接口除外）。
+ *
+ * 设计权衡：
+ * - 不在公共 API 文档宣传此端点；但它本身是公开只读接口（无敏感数据泄露之外的风险），
+ *   仅用于"按单条 id 查推广地址"。即使被逐个枚举，也只能一条条拿，无法批量采集
+ *   （对比 /api/products 一次返回 50 条 affiliateUrl）。
+ * - 商品不存在/已软删除 → 404（业务码 PRODUCT_NOT_FOUND），与 getProductById 一致。
+ */
+export async function getAffiliateTarget(req: Request, res: Response, _next: NextFunction): Promise<void> {
+  try {
+    const rawId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const id = parseStrictPositiveId(rawId);
+    if (id === null) {
+      errorResponse(res, ERROR_CODES.BAD_REQUEST, 'Invalid product id', 400);
+      return;
+    }
+
+    const product = await prisma.product.findFirst({
+      where: { id, isDeleted: false },
+      select: { id: true, affiliateUrl: true },
+    });
+
+    if (!product) {
+      errorResponse(res, ERROR_CODES.PRODUCT_NOT_FOUND, 'Product not found', 404);
+      return;
+    }
+
+    successResponse(res, product);
+  } catch (error) {
+    logError('Get affiliate target error', error);
     errorResponse(res, ERROR_CODES.INTERNAL_ERROR, 'Internal server error', 500);
   }
 }

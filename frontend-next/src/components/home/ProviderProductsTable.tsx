@@ -9,6 +9,7 @@ import type { Product } from "@/lib/api";
 import type { Locale } from "@/lib/i18n";
 import Button from "@/components/ui/Button";
 import { formatNum, formatTraffic, formatBandwidth, formatPrice } from "@/lib/format";
+import { goLink } from "@/lib/links";
 import styles from "./ProviderProductsTable.module.css";
 
 /**
@@ -130,9 +131,9 @@ export default function ProviderProductsTable({
         <Button
           variant="primary"
           size="middle"
-          href={record.affiliateUrl}
+          href={goLink(record.id)}
           target="_blank"
-          rel="noopener noreferrer"
+          rel="nofollow sponsored noopener noreferrer"
           icon={<ShoppingCartOutlined />}
         >
           {t("table.orderButton")}

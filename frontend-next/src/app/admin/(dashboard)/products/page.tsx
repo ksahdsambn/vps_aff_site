@@ -21,7 +21,7 @@ import {
   adminDeleteProduct,
   getApiErrorMessage,
 } from "@/lib/api";
-import type { Product, ProductFormData, ProductUpdatePayload } from "@/lib/api";
+import type { AdminProduct, ProductFormData, ProductUpdatePayload } from "@/lib/api";
 import Button from "@/components/ui/Button";
 
 const { Option } = Select;
@@ -65,7 +65,7 @@ interface ProductFormValues {
  * - 编辑模式 diff 算法保留（只发送改动字段，见 Bug #5）。
  */
 export default function AdminProductsPage() {
-  const [data, setData] = useState<Product[]>([]);
+  const [data, setData] = useState<AdminProduct[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
@@ -75,7 +75,7 @@ export default function AdminProductsPage() {
   const [reloadVersion, setReloadVersion] = useState(0);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [editingRecord, setEditingRecord] = useState<Product | null>(null);
+  const [editingRecord, setEditingRecord] = useState<AdminProduct | null>(null);
   // 提交中状态：Modal OK 按钮 loading + 禁用，防止双击重复提交（创建重复产品）。
   const [saving, setSaving] = useState(false);
   // 删除中状态：按行禁用，防止重复删除 / 在 refresh 期间连续操作。
@@ -133,7 +133,7 @@ export default function AdminProductsPage() {
     setIsModalVisible(true);
   };
 
-  const showEditModal = (record: Product) => {
+  const showEditModal = (record: AdminProduct) => {
     setEditingId(record.id);
     setEditingRecord(record);
     form.setFieldsValue({
@@ -258,7 +258,7 @@ export default function AdminProductsPage() {
     }
   };
 
-  const columns: ColumnsType<Product> = [
+  const columns: ColumnsType<AdminProduct> = [
     { title: "ID", dataIndex: "id", key: "id" },
     { title: "Provider", dataIndex: "provider", key: "provider" },
     { title: "Product", dataIndex: "name", key: "name" },
@@ -271,12 +271,12 @@ export default function AdminProductsPage() {
       title: "Price",
       dataIndex: "price",
       key: "price",
-      render: (value: number, record: Product) => `${value} ${record.currency}`,
+      render: (value: number, record: AdminProduct) => `${value} ${record.currency}`,
     },
     {
       title: "Actions",
       key: "actions",
-      render: (_value: unknown, record: Product) => (
+      render: (_value: unknown, record: AdminProduct) => (
         <Space size="middle">
           <Button variant="text" size="middle" icon={<EditOutlined />} onClick={() => showEditModal(record)}>
             Edit

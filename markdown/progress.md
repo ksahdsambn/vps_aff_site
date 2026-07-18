@@ -2084,3 +2084,180 @@ Docker daemon 在系统重启后不会自动拉起这些容器。退出码与 `O
 
 - 分支 `fix/compose-restart-policy`，提交并推送 `origin`，合并回 `master`。
 
+---
+
+## 2026-07-19 · 推广链接中转跳转（Affiliate Link Cloaking）
+
+### 背景
+
+后台创建商品时填写的 `affiliateUrl`（商家真实推广链接，B 域名）原本直接渲染到前台 HTML
+的 `<a href>`，用户点击直达商家站点。这暴露了两个问题：
+
+1. **HTML 源码泄露真实推广域名**：用户/竞品/爬虫查看页面源码即可批量采集所有商家推广 URL，
+   对 affiliate 计划不利。
+2. **SEO 权重外流**： affiliate 出链未标注 `rel="nofollow sponsored"`，且未做链接伪装。
+
+### 目标
+
+后台仍填真实 B 域名（admin 流程不变），但前台只暴露站点自身的 `/go/[id]` 中转链接（A 域名），
+用户点击后服务端按 id 查到真实 URL 再 **302** 跳转。同时把真实 URL 从公共 API 响应中剥离，
+防止 F12 抓包批量采集。
+
+### 设计决策
+
+- **URL 形式**：`/go/[id]`（用现有商品 ID，无需改数据库）
+- **状态码**：**302** 临时跳转（不传递 SEO 权重，POST 降级为 GET）
+- **实现**：Next.js Route Handler（`route.ts`）而非 page.tsx，因为 `next/navigation` 的
+  `redirect()` 在 Next.js 16 固定返回 307（见 `next/dist/client/components/redirect.js`，
+  `getRedirectError` 默认 `RedirectStatusCode.TemporaryRedirect = 307`），`RedirectType.replace`
+  只控制 history 行为不控制 HTTP 状态码。Route Handler 可用 `NextResponse.redirect(url, 302)`
+  显式指定 302。
+- **API 防采集**：公共产品接口（`/api/products`、`/api/products/:id`、`/api/providers/:name/products`）
+  用 Prisma `omit: { affiliateUrl: true }` 剥离该字段；新增内部端点 `/api/go/:id`（仅返回
+  `{id, affiliateUrl}`）供跳转路由按需查询。admin 接口仍返回完整字段（后台编辑需要回填）。
+- **无点击统计**：本次只做跳转，不做点击计数（保持简单）。
+
+### 关键修复（审查过程中发现并解决的 6 个问题）
+
+| # | 问题 | 严重度 | 修复 |
+|---|------|--------|------|
+| 1 | `redirect()` 放在 try/catch 内，catch 吞掉 `NEXT_REDIRECT` 导致跳转永远不发生（返回 404）| 🔴 严重 | redirect 移出 try 块 |
+| 2 | page.tsx + `redirect()` 实际返回 307 而非预期的 302 | 🟡 中 | 改用 route.ts + `NextResponse.redirect(url, 302)` |
+| 3 | 前端 `Number("01")=1` 比后端 `parseStrictPositiveId`（正则 `^[1-9]\d*$`）宽松，`/go/01` 被误判为 id=1 | 🟡 中 | 前端改用相同正则严格校验 |
+| 4 | fetch 缓存注释声称"不传 revalidate: 0"是机制，实际起作用的是 `force-dynamic` 让 fetch 默认 no-store | 🟢 小 | 重写注释说明真实机制，警告勿搬到非 dynamic 路由 |
+| 5 | 测试 mock prisma 直接返回完整对象，未模拟 Prisma 的 omit/select 字段投影，断言"响应不含 affiliateUrl"实际未被真正验证 | 🟡 中 | 新增 `applyProjection()` 真实模拟投影，加强断言 |
+| 6 | route.ts 缺 `X-Robots-Tag` 响应头（page.tsx 的 `metadata.robots` 在 route.ts 不支持）| 🟢 小 | 加 `X-Robots-Tag: noindex, nofollow`（与 robots.txt Disallow 形成纵深防御）|
+
+### 数据流
+
+```
+后台填: affiliateUrl = https://merchant.example/aff?id=12345  (B 域名 → 存数据库)
+                 ↓
+前台 HTML: <a href="/go/42" rel="nofollow sponsored noopener noreferrer">下单</a>  (A 域名)
+                 ↓ 用户点击
+浏览器请求 https://xmde.de/go/42  →  Next.js Route Handler (force-dynamic)
+                 ↓ 调内部端点 GET /api/go/42  (只返回 {id, affiliateUrl})
+302 Location: https://merchant.example/aff?id=12345  (B 域名)
+                 ↓
+用户到达 VPS 商家网站
+```
+
+公共 API `/api/products` 响应**不含 affiliateUrl 字段**（omit 剥离）；唯一获取真实 URL 的
+入口是 `/api/go/:id`（单条按 id 查询，无法批量采集）。
+
+### 改动
+
+#### 后端（4 文件）
+
+- `productController.ts`：新增 `PUBLIC_PRODUCT_OMIT = { omit: { affiliateUrl: true } }`，
+  应用到 `getProducts` / `getProductById` / `getProductsByProvider` 三个公共查询；
+  新增 `getAffiliateTarget` controller（`GET /api/go/:id`，用 `select: { id, affiliateUrl }`
+  只返回这两个字段，商品不存在/已软删除返回 404）。
+- `productRoutes.ts`：挂载 `router.get('/go/:id', getAffiliateTarget)`。
+- `package.json`：`npm test` 加入 `test/affiliateCloaking.test.cjs`。
+- `test/affiliateCloaking.test.cjs`（新增）：8 个单元测试，mock prisma 真实模拟 omit/select
+  投影，锁定"公共查询剥离 affiliateUrl"和"中转端点只返回 id+affiliateUrl"两个安全契约。
+  含突变测试验证（故意删除 omit 后测试立即失败）。
+
+#### 前端（7 修改 + 3 新增）
+
+- `lib/api.ts`：拆分类型——公共 `Product` 去掉 `affiliateUrl`，新增 `AdminProduct extends Product`
+  （含 affiliateUrl，admin 编辑回填用）；新增 `getAffiliateUrl()`（调 `/api/go/:id`，404 抛
+  `AffiliateNotFoundError` 供路由区分业务 404 vs 后端 5xx）；admin 函数（`adminGetProducts`/
+  `adminAddProduct`/`adminUpdateProduct`）返回类型改为 `AdminProduct`。
+- `lib/links.ts`（新增）：`goLink(id)` 返回相对路径 `/go/${id}`；`goLinkAbsolute(id)` 返回
+  绝对地址（JSON-LD 用）。直接读 `NEXT_PUBLIC_SITE_URL` 而非 import `seo.ts`，避免循环依赖。
+- `lib/seo.ts`：`ProductLike` 接口删除 `affiliateUrl` 字段；JSON-LD `Offer.url` 改用
+  `goLinkAbsolute(product.id)`（避免结构化数据泄露真实域名）。
+- `app/go/[id]/route.ts`（新增）：核心跳转路由。`force-dynamic` 实时查库（URL 变更立即生效），
+  正则 `^[1-9]\d*$` 严格校验 id，`NextResponse.redirect(url, 302)` 返回 302，
+  `X-Robots-Tag: noindex, nofollow` 防索引。
+- `app/robots.ts`：`disallow` 加 `/go/`。
+- `app/admin/(dashboard)/products/page.tsx`：`Product` 类型改 `AdminProduct`（6 处）。
+- `components/home/{ProductCard,ProductTable,ProductDetailContent,ProviderProductsTable}.tsx`：
+  下单按钮 `href` 从 `item.affiliateUrl` 改为 `goLink(item.id)`，`rel` 追加 `nofollow sponsored`。
+
+`reviewUrl`（查看测评）按钮**不动**——它是编辑性测评链接，不是 affiliate 出链，
+保持 `rel="noopener noreferrer"` 语义正确。
+
+### 验证
+
+#### 静态门禁
+
+- 后端 `tsc --noEmit`：通过
+- 后端 `npm test`：**19/19 通过**（原 11 + 新增 8 个 affiliate cloaking 测试）
+- 前端 `tsc --noEmit` / `eslint` / `next build`：全绿
+- 构建路由表确认 `/go/[id]` 标记为 `ƒ`（Dynamic，不预渲染）
+
+#### 端到端 HTTP（mock 后端 + 生产 Next.js server）
+
+| 场景 | 预期 | 实测 |
+|------|------|------|
+| `GET /go/1`（合法 id）| 302 + location 真实 URL | ✅ 302 + `location: https://merchant.example/...` |
+| `GET /go/1` 响应头 | 含 `X-Robots-Tag: noindex, nofollow` | ✅ |
+| `GET /go/999`（不存在）| 404 | ✅ 404 |
+| `GET /go/abc`（非数字）| 404 | ✅ |
+| `GET /go/01`（前导零）| 404 | ✅（修复后）|
+| `GET /go/0x10`（十六进制）| 404 | ✅ |
+| `POST /go/1` | 405 Method Not Allowed | ✅（Route Handler 只声明 GET，自动拒绝，防 CSRF）|
+
+#### 缓存豁免（实测）
+
+修改 mock 后端的 affiliateUrl 后，**下一次请求立即拿到新 URL**（毫秒级生效），证明
+`force-dynamic` 让 `getAffiliateUrl` 的 fetch 默认 no-store，后台改 URL 无需重新部署。
+
+#### HTML/API 泄漏检查（实测）
+
+- 详情页 + 首页 HTML：`merchant.example` / `SECRET` 出现次数均为 **0**
+- JSON-LD `Offer.url`：`https://test.example.com/go/1`（中转链接绝对地址，非真实域名）
+- 公共 API `/api/products` 响应：无 `affiliateUrl` 字段（Prisma omit 剥离）
+- sitemap.xml：只用 `item.id` 构造 URL，不含 affiliateUrl
+
+#### 测试有效性（突变测试）
+
+故意删除 `getProducts` 的 `...PUBLIC_PRODUCT_OMIT` → 测试**立即失败**
+（`findMany 必须传入 omit: { affiliateUrl: true }`），证明测试能捕获回归。
+
+### 安全维度覆盖
+
+| 维度 | 状态 |
+|------|------|
+| HTML/API/sitemap/JSON-LD 不泄露真实 URL | ✅ |
+| 前后端 ID 校验一致（正则 `^[1-9]\d*$`）| ✅ |
+| HTTP 302 状态码正确（非 307）| ✅ |
+| 缓存豁免（URL 变更即时生效）| ✅ |
+| 三层防索引（robots.txt Disallow + X-Robots-Tag + noindex 语义）| ✅ |
+| Referrer 不泄露路径（`Referrer-Policy: strict-origin-when-cross-origin`）| ✅ |
+| CSP 兼容（`form-action: self` 不阻止 302 跳转）| ✅ |
+| 无开放重定向（admin 强制 `isSafeHttpUrl` 只允许 http/https）| ✅ |
+| affiliate rel 合规（`nofollow sponsored noopener noreferrer`）| ✅ |
+| POST 自动 405（防 CSRF POST 跳转）| ✅ |
+| Docker 构建兼容（force-dynamic 路由不在构建时执行）| ✅ |
+
+### 部署兼容性
+
+- **无需数据库迁移**：复用现有 `Product.id`，不动 schema
+- **无需改 docker-compose.yml**：`/api/go/:id` 自动随 backend 暴露，`/go/[id]` 自动随 frontend 暴露
+- **无需改 nginx**：`location /` 反代所有到 Next.js，`/go/*` 自动走 Route Handler，`/api/*` 由 Next.js rewrites 代理到后端
+- **后台流程不变**：admin 继续填真实 B 域名，编辑回填正常
+
+### 修改文件清单
+
+| 文件 | 改动 |
+|------|------|
+| `backend/src/controllers/productController.ts` | +`PUBLIC_PRODUCT_OMIT`（3 处 spread）+ `getAffiliateTarget` controller |
+| `backend/src/routes/productRoutes.ts` | +`/go/:id` 路由 |
+| `backend/package.json` | `npm test` 加入新测试文件 |
+| `backend/test/affiliateCloaking.test.cjs` | 新增（8 测试，mock prisma 投影）|
+| `frontend-next/src/lib/api.ts` | 拆分 `Product`/`AdminProduct`，+`getAffiliateUrl`/`AffiliateNotFoundError`/`AffiliateTarget` |
+| `frontend-next/src/lib/links.ts` | 新增（`goLink`/`goLinkAbsolute`）|
+| `frontend-next/src/lib/seo.ts` | `ProductLike` 去 `affiliateUrl`，`Offer.url` 用 `goLinkAbsolute` |
+| `frontend-next/src/app/go/[id]/route.ts` | 新增（核心跳转路由，302 + X-Robots-Tag）|
+| `frontend-next/src/app/robots.ts` | `disallow` +`/go/` |
+| `frontend-next/src/app/admin/(dashboard)/products/page.tsx` | `Product`→`AdminProduct`（6 处）|
+| `frontend-next/src/components/home/{ProductCard,ProductTable,ProductDetailContent,ProviderProductsTable}.tsx` | `href` 用 `goLink(id)`，`rel` 加 `nofollow sponsored` |
+| `markdown/progress.md` | 追加本条记录 |
+
+### 部署操作
+
+- 分支 `feat/affiliate-link-cloaking`，提交并推送 `origin`，合并回 `master`。

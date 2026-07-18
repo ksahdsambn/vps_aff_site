@@ -14,6 +14,7 @@ import type { Locale } from "@/lib/i18n";
 import SpecStat from "@/components/ui/SpecStat";
 import Button from "@/components/ui/Button";
 import { formatNum, formatTraffic, formatBandwidth } from "@/lib/format";
+import { goLink } from "@/lib/links";
 import styles from "./ProductDetailContent.module.css";
 
 /**
@@ -113,9 +114,9 @@ export default function ProductDetailContent({
           <Button
             variant="primary"
             size="large"
-            href={product.affiliateUrl}
+            href={goLink(product.id)}
             target="_blank"
-            rel="noopener noreferrer"
+            rel="nofollow sponsored noopener noreferrer"
             icon={<ShoppingCartOutlined />}
             className={styles.orderCta}
           >

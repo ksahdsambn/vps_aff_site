@@ -6,6 +6,8 @@
  * 消灭所有 your-domain.com 占位符。
  */
 
+import { goLinkAbsolute } from "@/lib/links";
+
 export const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL || "https://xmde.de";
 
@@ -38,7 +40,6 @@ interface ProductLike {
   disk: number;
   price: number;
   currency: string;
-  affiliateUrl: string;
 }
 
 /** Organization schema（品牌知识面板）。 */
@@ -76,7 +77,9 @@ export function generateProductJsonLd(product: ProductLike, locale: "zh" | "en")
       "@type": "Offer",
       price: product.price.toFixed(2),
       priceCurrency: product.currency,
-      url: product.affiliateUrl,
+      // Offer.url 指向站点中转链接而非真实 affiliateUrl，避免在结构化数据中
+      // 泄露商家推广域名（与前台按钮 href 保持一致的"链接伪装"语义）。
+      url: goLinkAbsolute(product.id),
       availability: "https://schema.org/InStock",
     },
   };

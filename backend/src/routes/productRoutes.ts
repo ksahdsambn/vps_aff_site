@@ -5,6 +5,7 @@ import {
   getProductById,
   getAllProductIds,
   getProductsByProvider,
+  getAffiliateTarget,
 } from '../controllers/productController';
 
 const router = Router();
@@ -24,5 +25,8 @@ router.get('/providers', getProviders);
 
 // GET /api/providers/:name/products — 指定服务商的所有产品（聚合页用）
 router.get('/providers/:name/products', getProductsByProvider);
+
+// GET /api/go/:id — 推广链接中转端点（仅返回 id + affiliateUrl，供前端 /go/[id] 跳转用）
+router.get('/go/:id', getAffiliateTarget);
 
 export default router;
