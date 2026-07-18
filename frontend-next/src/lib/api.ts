@@ -8,6 +8,13 @@
 
 // ============ 类型定义 ============
 
+/**
+ * 公共产品类型（来自公共 API：/api/products、/api/products/:id、/api/providers/:name/products）。
+ *
+ * 注意：不含 `affiliateUrl`——后端公共接口已剥离该字段（防抓包批量采集商家推广域名）。
+ * 真实推广 URL 仅由内部中转端点 /api/go/:id 按需返回（见 getAffiliateUrl），
+ * 或由 admin 接口返回（见 AdminProduct）。
+ */
 export interface Product {
   id: number;
   provider: string;
@@ -22,10 +29,18 @@ export interface Product {
   currency: string;
   reviewUrl?: string | null;
   remark?: string | null;
-  affiliateUrl: string;
   isDeleted: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+/**
+ * 后台产品类型（来自 admin API：/api/admin/products）。
+ *
+ * 在公共 Product 基础上多出 `affiliateUrl`：后台编辑表单需回填该字段。
+ */
+export interface AdminProduct extends Product {
+  affiliateUrl: string;
 }
 
 export interface TrafficInput {
@@ -233,6 +248,51 @@ export async function getProductsByProvider(name: string): Promise<Product[]> {
   return unwrap<Product[]>(res);
 }
 
+/**
+ * 推广链接中转查询（仅 /go/[id] 跳转路由使用）。
+ *
+ * 调用内部端点 /api/go/:id 拿到真实 affiliateUrl（B 域名）。
+ * 该端点是为 affiliateUrl 从公共产品接口剥离后，前端获取该字段的唯一入口。
+ *
+ * 缓存策略：不缓存。后台改了 affiliate URL 后，用户下次点击立即生效——这是
+ * affiliate 链接中转的关键需求。
+ *
+ * 机制说明：本函数未显式传 `cache: 'no-store'` 或 `next: { revalidate: 0 }`，
+ * 但调用方（/go/[id]/route.ts）声明了 `export const dynamic = "force-dynamic"`。
+ * 在 Next.js 15+ 中，dynamic 路由内未指定缓存策略的 fetch 默认行为为 no-store，
+ * 因此整条跳转链路不会被缓存。这与 getProductById 等用 `next: { revalidate }`
+ * 的 ISR 函数不同——不要把本函数搬到非 dynamic 路由里调用，否则可能被缓存。
+ *
+ * 与 getProductById 的错误语义区别（供 /go/[id] 区分 404 vs 5xx）：
+ * - HTTP 404（商品不存在/已软删除）→ 抛 AffiliateNotFoundError
+ * - HTTP 其他非 2xx（含 5xx、网关错误）→ 抛普通 Error
+ * - 响应非 JSON（反代错误页）→ 抛 ApiParseError（带 status）
+ */
+export class AffiliateNotFoundError extends Error {
+  constructor(id: number | string) {
+    super(`Affiliate target for product ${id} not found`);
+    this.name = "AffiliateNotFoundError";
+  }
+}
+
+export interface AffiliateTarget {
+  id: number;
+  affiliateUrl: string;
+}
+
+/** 公共：按 id 查推广目标 URL（仅 /go/[id] 跳转路由用）。 */
+export async function getAffiliateUrl(id: number | string): Promise<AffiliateTarget> {
+  const res = await fetch(`${serverApiBase()}/go/${id}`, {
+    // 不传 serverFetchOptions：跳转链路不缓存，确保 affiliate URL 变更立即生效。
+    // 但仍需超时保护，避免后端挂掉时跳转路由长时间挂起。
+    signal: typeof AbortSignal !== "undefined" ? AbortSignal.timeout(SERVER_FETCH_TIMEOUT) : undefined,
+  } as RequestInit);
+  if (res.status === 404) {
+    throw new AffiliateNotFoundError(id);
+  }
+  return unwrap<AffiliateTarget>(res);
+}
+
 /** 公共：获取站点配置。 */
 export async function getConfig(): Promise<FrontendConfig> {
   const res = await fetch(`${serverApiBase()}/config`, serverFetchOptions(300));
@@ -340,15 +400,15 @@ export async function adminGetSession(): Promise<{ expiresAt: number }> {
   return res.data.data;
 }
 
-/** 后台获取产品列表（分页/搜索）。 */
+/** 后台获取产品列表（分页/搜索）。返回类型含 affiliateUrl（admin 编辑回填用）。 */
 export async function adminGetProducts(params: {
   page?: number;
   pageSize?: number;
   keyword?: string;
   isDeleted?: string;
-} = {}): Promise<PaginatedResponse<Product>> {
+} = {}): Promise<PaginatedResponse<AdminProduct>> {
   const api = await getAdminApi();
-  const res = await api.get<ApiResponse<PaginatedResponse<Product>>>("/admin/products", {
+  const res = await api.get<ApiResponse<PaginatedResponse<AdminProduct>>>("/admin/products", {
     params,
   });
   if (res.data.code !== 0 || !res.data.data) {
@@ -360,26 +420,26 @@ export async function adminGetProducts(params: {
 /** 后台新增产品。 */
 export async function adminAddProduct(
   payload: ProductFormData
-): Promise<Product> {
+): Promise<AdminProduct> {
   const api = await getAdminApi();
-  const res = await api.post<ApiResponse<Product>>("/admin/products", payload);
+  const res = await api.post<ApiResponse<AdminProduct>>("/admin/products", payload);
   if (res.data.code !== 0) {
     throw new Error(res.data.message || "Create failed");
   }
-  return res.data.data as Product;
+  return res.data.data as AdminProduct;
 }
 
 /** 后台更新产品（仅改动字段）。 */
 export async function adminUpdateProduct(
   id: number,
   payload: ProductUpdatePayload
-): Promise<Product> {
+): Promise<AdminProduct> {
   const api = await getAdminApi();
-  const res = await api.put<ApiResponse<Product>>(`/admin/products/${id}`, payload);
+  const res = await api.put<ApiResponse<AdminProduct>>(`/admin/products/${id}`, payload);
   if (res.data.code !== 0) {
     throw new Error(res.data.message || "Update failed");
   }
-  return res.data.data as Product;
+  return res.data.data as AdminProduct;
 }
 
 /** 后台删除产品（软删除）。 */
